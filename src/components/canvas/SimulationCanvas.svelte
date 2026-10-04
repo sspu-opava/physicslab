@@ -3,6 +3,7 @@
   import type { BodyDefinition, PhysicsDocument, SceneState, Vector2 } from '../../lib/document/types';
   import { PhysicsRenderer } from '../../lib/renderer/PhysicsRenderer';
   import { screenToWorld } from '../../lib/units/coordinates';
+  import { hitTestJoint } from '../../lib/physics/joints/joints';
   import { hitTest, selectInBox, TransformGesture, type SceneTool, type SelectionBox } from '../../lib/tools/SceneTools';
   let { document, state: snapshot, selection, select, selectMany, tool, time, snapInterval, editable, editing, gesture }: {
     document: PhysicsDocument; state: SceneState; selection: string[]; select: (id: string, additive?: boolean) => void; selectMany: (ids: string[]) => void;
@@ -44,6 +45,8 @@
         gesture('begin');
       }
     } else {
+      const jointId = hitTestJoint(document, snapshot, point, 8 / (renderer.view.zoom * renderer.view.pixelsPerMeter));
+      if (jointId) { select(jointId, e.shiftKey); return; }
       boxSelection = e.shiftKey ? [...selection] : [];
       if (!e.shiftKey) select('');
       box = { start: point, end: point };

@@ -25,3 +25,14 @@ Port 1420 byl na tomto počítači odmítnut chybou EACCES; frontend i Tauri pro
 - Inspector: změna poloměru a přímé Undo; přidání obdélníku, zadání rotace 30°, přímé spuštění simulace, Reset a následné Undo autorské rotace. Simulace nepřidala příkazy do historie.
 - Celá scéna: automatické přiblížení, rámeček kolem koule a obdélníku vybral dvě tělesa; Smazat ponechalo podlahu, Undo obnovilo obě tělesa.
 - Finální náhled: `artifacts/physicslab-editor.png`. Nativní Rust část se v této fázi neměnila; kontrola rozhraní proběhla v prohlížeči.
+
+## Fáze 4 — fyzikální vazby (4. 10. 2026)
+
+- `npm run check`: 0 chyb, 0 varování.
+- `npm test`: 25 úspěšných testů ve 3 souborech.
+- `npm run build`: úspěšný produkční build; Vite pouze doporučuje rozdělit hlavní bundle (přibližně 540 kB před gzip).
+- Testy fyziky: kyvadlo a společné kotvy, pevná vzdálenost, normalizovaná osa posuvu a meze, pevné spojení a referenční úhel, úhlové meze, vypnutí a odstranění vazby, odstranění navázaného tělesa a reset.
+- Testy modelu a historie: místní souřadnice otočených těles, serializace, neplatné reference / délka / osa, vytvoření a změna vazby, mazání a Undo včetně referencí, odmítnutí změny obou těles na statická bez změny historie.
+- Chrome: vytvořen závěs (0, 4) m a koule (1, 2) m, přidán otočný kloub; skutečná simulace kyvadla v čase 3,433 s ukázala polohu (0,716; 1,882) m a rychlost 1,490 m/s. Kotvy a čára vazby sledují simulovaná tělesa.
+- Inspector: propojení tělesa se sebou bylo odmítnuto viditelným upozorněním a výběr B se vrátil na kouli. Vypnutí vazby bylo obnoveno přes Undo; smazání ponechalo obě tělesa, Undo obnovilo aktivní kloub a jeho funkci.
+- Náhled: `artifacts/physicslab-joints.png`. Rust host se neměnil; rozhraní ověřeno v prohlížeči nad stejným frontendem.

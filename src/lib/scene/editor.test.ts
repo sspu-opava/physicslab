@@ -4,6 +4,7 @@ import { createBody, createDocument } from '../document/createDocument';
 import { TransformGesture, hitTest, selectInBox } from '../tools/SceneTools';
 import { SimulationCore } from '../simulation/SimulationCore';
 import { PlanckPhysicsAdapter } from '../physics/adapters/PlanckPhysicsAdapter';
+import { createJoint } from '../physics/joints/joints';
 
 describe('Autorská historie', () => {
   it('uloží celé tažení jako jeden příkaz a zrušené tažení neukládá', () => {
@@ -26,7 +27,7 @@ describe('Autorská historie', () => {
   });
   it('mazání vyčistí reference a undo obnoví model včetně referencí', () => {
     const document = createDocument();
-    document.joints = [{ id: 'joint', type: 'distance', enabled: true, parameters: {}, bodyAId: 'ground', bodyBId: 'ball' }];
+    document.joints = [createJoint('distance', document.bodies[0], document.bodies[1], 'joint')];
     document.sensors = [{ id: 'sensor', type: 'position', enabled: true, parameters: {}, bodyId: 'ball' }];
     document.measurements = [{ id: 'measurement', sensorId: 'sensor', sampleInterval: 0.1 }];
     const editor = new SceneEditor(document); editor.select('ball'); editor.deleteSelected();

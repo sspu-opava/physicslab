@@ -12,6 +12,7 @@ export class SimulationCore {
     this.document = structuredClone(document); this.status = 'STOPPED'; this.clock.reset();
     this.adapter.initialize(this.document.world);
     for (const body of this.document.bodies) this.adapter.createBody(body);
+    for (const joint of this.document.joints) this.adapter.createJoint(joint);
     this.current = this.snapshot(); this.previous = this.current;
   }
   private snapshot(): SceneState { return Object.fromEntries(this.document.bodies.map(b => [b.id, this.adapter.getBodyState(b.id)])); }

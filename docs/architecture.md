@@ -1,4 +1,4 @@
-# Architektura PhysicsLab — základy a editor scény
+# Architektura PhysicsLab — základy, editor scény a vazby
 
 ```text
 Svelte komponenty → PhysicsDocument → SimulationCore → PhysicsEngineAdapter → Planck
@@ -10,7 +10,7 @@ Svelte komponenty → PhysicsDocument → SimulationCore → PhysicsEngineAdapte
 
 `document/types.ts` definuje čistá serializovatelná data. Těleso obsahuje oddělený seznam fixtures a vzhled; identita je řetězcové ID. Počáteční dokument je autorská scéna a běh simulace jej nemění. Pro budoucí moduly jsou připravené datové typy, nikoli předstírané implementace.
 
-`PhysicsEngineAdapter` je rozhraní pouze pro aktuálně podporované operace. `PlanckPhysicsAdapter` vlastní Planck objekty a mapuje ID na interní tělesa. Explicitní hmotnost má přednost před hustotou; moment setrvačnosti z fixtures se přepočítá poměrem hmotností. V další etapě se přidá rozhraní vazeb spolu s reálnou implementací.
+`PhysicsEngineAdapter` je rozhraní pouze pro aktuálně podporované operace. `PlanckPhysicsAdapter` vlastní Planck objekty a mapuje ID na interní tělesa a vazby. Explicitní hmotnost má přednost před hustotou; moment setrvačnosti z fixtures se přepočítá poměrem hmotností.
 
 `SimulationCore` vlastní stav STOPPED / RUNNING / PAUSED. `SimulationClock` akumuluje čas a provádí pouze kroky 1/120 s, nezávisle na vykreslování. Jedna prodleva snímku je omezena na 0,25 s proti neomezenému dohánění po uspání. Násobitel času je řízení běhu a nemění počáteční dokument. `previous`, `current` a `clock.alpha` připravují interpolaci; první renderer zobrazuje aktuální stav bez interpolace.
 
@@ -36,6 +36,16 @@ Pointer tažení a editace pole Inspectoru používají transakci begin → prev
 
 Canvas pouze převádí pointer souřadnice, řídí capture a deleguje nástrojům; renderer kreslí více vybraných těles a výběrový rámeček bez změny modelu. Inspector pracuje s posledním vybraným tělesem. Mazání odstraní navázané joints, sensors a measurements, a odstraní ID z cílových seznamů sil. Undo obnovuje tyto reference společně s tělesy. Duplikace vytváří nové ID a nezávislé fixtures; nekopíruje budoucí vazby nebo senzory.
 
+## Fyzikální vazby (fáze 4)
+
+`JointDefinition` je typovaná unie čtyř vazeb: revolute, distance, prismatic a weld. Obsahuje ID těles, název, aktivaci, kolize propojených těles, místní kotvy a parametry příslušného typu. Neobsahuje objekty enginu. Jádro obnovuje vazby po vytvoření všech těles při každém resetu.
+
+`physics/joints/joints.ts` sdílí katalog vazeb, jejich tvorbu, validaci, transformaci kotev a hit test. Nový revolute/weld/prismatic spoj vytvoří společnou kotvu ve středu A; distance spoj propojí středy a odvodí délku. Osa posuvu je při tvorbě světové +x, převedené do os A. Lokální kotvy při přesunu a otočení těles zůstávají připojené; ruční změna geometrie může vytvořit počáteční nesoulad, který řešič napraví. Inspector nabízí sjednocení kotev v bodě A. Změna velikosti těles zatím lokální kotvy neškáluje.
+
+`JointCreator` v knihovně vybírá typ a dvě tělesa; tlačítko typu převezme dvojici vybraných těles. `JointInspector` upravuje kotvy, referenční úhel, délku, osu a meze. Výběr ID je společný pro tělesa i vazby. Vazby lze vybrat ve stromu i kliknutím na jejich čáru; transformace plátna se týkají těles. Mazání vazby ponechá tělesa; mazání tělesa odstraní související vazby. Historie obnovuje celé autorské modely, včetně vazeb. Duplikace zůstává dostupná pro tělesa, vazby se automaticky nekopírují.
+
+Renderer získává polohy kotev ze snapshotů těles, vykresluje spojovací čáry, kotvy a osu posuvného kloubu. Vizualizace nevstupuje do řešiče. Validace editoru odmítá neplatnou vazbu před uložením do historie; upozornění je viditelné v UI a pole se při odmítnutí vrací k hodnotám modelu.
+
 ## Ověření
 
-`npm run check`, `npm test`, `npm run build`. Testy ověřují převod os a zoomu, nezávislost kroku na FPS, volný pád, kontakt s podlahou, impuls v SI, pause/reset a neměnnost počátečního dokumentu.
+`npm run check`, `npm test`, `npm run build`. Testy ověřují převod os a zoomu, nezávislost kroku na FPS, volný pád, kontakt s podlahou, impuls v SI, pause/reset, editor a historii, omezení všech čtyř vazeb a neměnnost počátečního dokumentu.

@@ -11,7 +11,17 @@ export interface BodyDefinition {
   appearance: { fill: string; stroke: string; strokeWidth: number; opacity: number };
 }
 export interface ModuleDefinition { id: string; type: string; enabled: boolean; parameters: Record<string, unknown> }
-export interface JointDefinition extends ModuleDefinition { bodyAId: string; bodyBId: string }
+export type JointType = 'revolute' | 'distance' | 'prismatic' | 'weld';
+interface JointBase {
+  id: string; name: string; enabled: boolean; bodyAId: string; bodyBId: string;
+  collideConnected: boolean; localAnchorA: Vector2; localAnchorB: Vector2;
+}
+export type JointDefinition = JointBase & (
+  { type: 'distance'; length: number } |
+  { type: 'revolute'; referenceAngle: number; enableLimit: boolean; lowerAngle: number; upperAngle: number } |
+  { type: 'prismatic'; referenceAngle: number; localAxisA: Vector2; enableLimit: boolean; lowerTranslation: number; upperTranslation: number } |
+  { type: 'weld'; referenceAngle: number }
+);
 export interface ForceDefinition extends ModuleDefinition { targetBodyIds: string[] }
 export interface SensorDefinition extends ModuleDefinition { bodyId: string }
 export interface MeasurementDefinition { id: string; sensorId: string; sampleInterval: number }

@@ -2,17 +2,19 @@ import { Application, Graphics } from 'pixi.js';
 import type { PhysicsDocument, SceneState, Vector2 } from '../document/types';
 import { screenToWorld, worldToScreen, type Viewport } from '../units/coordinates';
 import { bodyBounds, type SelectionBox } from '../tools/SceneTools';
+import { jointAnchors, localToWorld } from '../physics/joints/joints';
 export class PhysicsRenderer {
   private app = new Application();
   private grid = new Graphics();
   private bodies = new Graphics();
   private overlay = new Graphics();
+  private joints = new Graphics();
   private observer?: ResizeObserver;
   private ready = false;
   view: Viewport = { origin: { x: 0, y: 0 }, pixelsPerMeter: 100, zoom: 1 };
   async initialize(host: HTMLDivElement): Promise<void> {
     await this.app.init({ background: '#101e28', antialias: true, resolution: window.devicePixelRatio, autoDensity: true, preference: 'webgl', autoStart: false, width: host.clientWidth, height: host.clientHeight });
-    host.appendChild(this.app.canvas); this.app.stage.addChild(this.grid, this.bodies, this.overlay); this.ready = true;
+    host.appendChild(this.app.canvas); this.app.stage.addChild(this.grid, this.joints, this.bodies, this.overlay); this.ready = true;
     this.resetView();
     this.observer = new ResizeObserver(() => {
       const previous = { width: this.app.screen.width, height: this.app.screen.height };
@@ -59,6 +61,26 @@ export class PhysicsRenderer {
     }
     this.grid.moveTo(0, oy).lineTo(width, oy).moveTo(ox, 0).lineTo(ox, height).stroke({ color: '#637d8b', width: 1, alpha: 0.55 });
     this.bodies.clear();
+    this.joints.clear();
+    for (const joint of document.joints) {
+      const anchors = jointAnchors(joint, state); if (!anchors) continue;
+      const a = worldToScreen(anchors.a, this.view), b = worldToScreen(anchors.b, this.view);
+      const color = selection.includes(joint.id) ? '#fff1a3' : joint.enabled ? '#f7c879' : '#6b7e8b';
+      if (joint.type !== 'distance') {
+        const centerA = worldToScreen(state[joint.bodyAId].position, this.view), centerB = worldToScreen(state[joint.bodyBId].position, this.view);
+        this.joints.moveTo(centerA.x, centerA.y).lineTo(a.x, a.y).moveTo(b.x, b.y).lineTo(centerB.x, centerB.y).stroke({ color, width: 3, alpha: joint.enabled ? 0.7 : 0.3 });
+      }
+      this.joints.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ color, width: selection.includes(joint.id) ? 4 : 2, alpha: joint.enabled ? 1 : 0.4 });
+      this.joints.circle(a.x, a.y, 6).fill('#172733').stroke({ color, width: 2 });
+      this.joints.circle(b.x, b.y, 5).fill('#172733').stroke({ color, width: 2 });
+      if (joint.type === 'weld') this.joints.rect(a.x - 4, a.y - 4, 8, 8).stroke({ color, width: 2 });
+      if (joint.type === 'prismatic') {
+        const body = state[joint.bodyAId], length = Math.hypot(joint.localAxisA.x, joint.localAxisA.y);
+        const axisEnd = localToWorld({ x: joint.localAnchorA.x + joint.localAxisA.x / length, y: joint.localAnchorA.y + joint.localAxisA.y / length }, body);
+        const end = worldToScreen(axisEnd, this.view);
+        this.joints.moveTo(a.x, a.y).lineTo(end.x, end.y).stroke({ color: '#7fdbb6', width: 2, alpha: 0.8 });
+      }
+    }
     for (const body of document.bodies) {
       const current = state[body.id]; if (!current) continue;
       const position = worldToScreen(current.position, this.view);

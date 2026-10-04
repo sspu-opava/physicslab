@@ -1,5 +1,7 @@
 <script lang="ts">
-  let { disabled, add }: { disabled: boolean; add: (shape: 'circle' | 'box') => void } = $props();
+  import JointCreator from './JointCreator.svelte';
+  import type { JointType, PhysicsDocument } from '../../lib/document/types';
+  let { disabled, add, document, selection, addJoint }: { disabled: boolean; add: (shape: 'circle' | 'box') => void; document: PhysicsDocument; selection: string[]; addJoint: (type: JointType, a: string, b: string) => void } = $props();
   let search = $state('');
   const items = [{ type: 'circle' as const, label: 'Kruh', icon: '●' }, { type: 'box' as const, label: 'Obdélník', icon: '▬' }];
 </script>
@@ -12,6 +14,7 @@
         <button class="library-item" {disabled} onclick={() => add(item.type)}><span class="shape-icon">{item.icon}</span>{item.label}</button>
       {/each}
     </div>
+    <JointCreator {document} {selection} {disabled} create={addJoint}/>
     <div class="library-note"><span class="note-icon">↓</span><h3>Gravitační pole</h3><p>Svět používá gravitační zrychlení Země.</p><strong>9,81 <small>m/s²</small></strong></div>
     <div class="foundation-note"><span class="eyebrow">PRVNÍ EXPERIMENT</span><h3>Volný pád</h3><p>Spusťte simulaci a sledujte pád a odrazy koule. Vlastnosti můžete upravit po resetu.</p><span class="tag">SI jednotky</span><span class="tag">120 kroků / s</span></div>
   </div>
