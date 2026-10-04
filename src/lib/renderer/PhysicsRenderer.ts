@@ -1,18 +1,24 @@
 import { Application, Graphics } from 'pixi.js';
 import type { PhysicsDocument, SceneState, Vector2 } from '../document/types';
 import { screenToWorld, worldToScreen, type Viewport } from '../units/coordinates';
+import { bodyBounds, type SelectionBox } from '../tools/SceneTools';
 export class PhysicsRenderer {
   private app = new Application();
   private grid = new Graphics();
   private bodies = new Graphics();
+  private overlay = new Graphics();
   private observer?: ResizeObserver;
   private ready = false;
   view: Viewport = { origin: { x: 0, y: 0 }, pixelsPerMeter: 100, zoom: 1 };
   async initialize(host: HTMLDivElement): Promise<void> {
     await this.app.init({ background: '#101e28', antialias: true, resolution: window.devicePixelRatio, autoDensity: true, preference: 'webgl', autoStart: false, width: host.clientWidth, height: host.clientHeight });
-    host.appendChild(this.app.canvas); this.app.stage.addChild(this.grid, this.bodies); this.ready = true;
+    host.appendChild(this.app.canvas); this.app.stage.addChild(this.grid, this.bodies, this.overlay); this.ready = true;
     this.resetView();
-    this.observer = new ResizeObserver(() => { this.app.renderer.resize(host.clientWidth, host.clientHeight); });
+    this.observer = new ResizeObserver(() => {
+      const previous = { width: this.app.screen.width, height: this.app.screen.height };
+      this.app.renderer.resize(host.clientWidth, host.clientHeight);
+      this.pan({ x: (host.clientWidth - previous.width) / 2, y: (host.clientHeight - previous.height) * 0.83 });
+    });
     this.observer.observe(host);
   }
   resetView(): void {
@@ -20,11 +26,21 @@ export class PhysicsRenderer {
     this.view.zoom = Math.max(0.2, Math.min(1, (this.app.screen.height * 0.83 - 55) / (4.3 * this.view.pixelsPerMeter), (this.app.screen.width - 60) / (10 * this.view.pixelsPerMeter)));
   }
   pan(delta: Vector2): void { this.view.origin.x += delta.x; this.view.origin.y += delta.y; }
+  fitToScene(document: PhysicsDocument, state: SceneState): void {
+    const bounds = document.bodies.filter(body => state[body.id]).map(body => bodyBounds(body, state[body.id]));
+    if (!bounds.length) { this.resetView(); return; }
+    const minX = Math.min(...bounds.map(b => b.minX)), maxX = Math.max(...bounds.map(b => b.maxX));
+    const minY = Math.min(...bounds.map(b => b.minY)), maxY = Math.max(...bounds.map(b => b.maxY));
+    this.view.pixelsPerMeter = document.world.pixelsPerMeter;
+    this.view.zoom = Math.max(0.05, Math.min(4, (this.app.screen.width - 100) / (Math.max(0.1, maxX - minX) * this.view.pixelsPerMeter), (this.app.screen.height - 100) / (Math.max(0.1, maxY - minY) * this.view.pixelsPerMeter)));
+    const scale = this.view.zoom * this.view.pixelsPerMeter;
+    this.view.origin = { x: this.app.screen.width / 2 - (minX + maxX) / 2 * scale, y: this.app.screen.height / 2 + (minY + maxY) / 2 * scale };
+  }
   zoomAt(point: Vector2, factor: number): void {
-    const world = screenToWorld(point, this.view); this.view.zoom = Math.max(0.2, Math.min(4, this.view.zoom * factor));
+    const world = screenToWorld(point, this.view); this.view.zoom = Math.max(0.05, Math.min(4, this.view.zoom * factor));
     const next = worldToScreen(world, this.view); this.pan({ x: point.x - next.x, y: point.y - next.y });
   }
-  render(document: PhysicsDocument, state: SceneState, selected: string, showGrid: boolean): void {
+  render(document: PhysicsDocument, state: SceneState, selection: string[], showGrid: boolean, box?: SelectionBox): void {
     if (!this.ready) return;
     this.view.pixelsPerMeter = document.world.pixelsPerMeter;
     const { width, height } = this.app.screen, scale = this.view.pixelsPerMeter * this.view.zoom;
@@ -56,11 +72,25 @@ export class PhysicsRenderer {
           });
           this.bodies.poly(corners.flatMap(p => [p.x, p.y]));
         }
-        this.bodies.fill({ color: body.appearance.fill, alpha: body.appearance.opacity }).stroke({ color: body.id === selected ? '#d5f0ff' : body.appearance.stroke, width: body.id === selected ? 3 : body.appearance.strokeWidth });
+        this.bodies.fill({ color: body.appearance.fill, alpha: body.appearance.opacity }).stroke({ color: selection.includes(body.id) ? '#d5f0ff' : body.appearance.stroke, width: selection.includes(body.id) ? 3 : body.appearance.strokeWidth });
         if (shape.type === 'circle') {
           this.bodies.circle(position.x - shape.radius * scale * 0.3, position.y - shape.radius * scale * 0.35, shape.radius * scale * 0.26).fill({ color: '#ffffff', alpha: 0.22 });
         }
       }
+    }
+    this.overlay.clear();
+    for (const body of document.bodies.filter(body => selection.includes(body.id))) {
+      const current = state[body.id]; if (!current) continue;
+      const bounds = bodyBounds(body, current);
+      const topLeft = worldToScreen({ x: bounds.minX, y: bounds.maxY }, this.view);
+      const bottomRight = worldToScreen({ x: bounds.maxX, y: bounds.minY }, this.view);
+      this.overlay.rect(topLeft.x - 5, topLeft.y - 5, bottomRight.x - topLeft.x + 10, bottomRight.y - topLeft.y + 10).stroke({ color: '#55baff', alpha: 0.65, width: 1 });
+      const center = worldToScreen(current.position, this.view);
+      this.overlay.moveTo(center.x - 4, center.y).lineTo(center.x + 4, center.y).moveTo(center.x, center.y - 4).lineTo(center.x, center.y + 4).stroke({ color: '#e2f5ff', alpha: 0.8, width: 1 });
+    }
+    if (box) {
+      const a = worldToScreen(box.start, this.view), b = worldToScreen(box.end, this.view);
+      this.overlay.rect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(a.x - b.x), Math.abs(a.y - b.y)).fill({ color: '#42a8f8', alpha: 0.12 }).stroke({ color: '#64c2ff', width: 1 });
     }
     this.app.render();
   }

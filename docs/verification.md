@@ -14,3 +14,14 @@ V Chrome na `http://127.0.0.1:5173` bylo vizuálně ověřeno PixiJS plátno, m�
 Náhled: `artifacts/physicslab-preview.png` (lokální, mimo verzování).
 
 Port 1420 byl na tomto počítači odmítnut chybou EACCES; frontend i Tauri proto používají 5173. Přímé vizuální ověření nativního okna přes computer-use se nepodařilo kvůli vypršení schválení nástroje; vizuální a interakční kontrola proběhla v prohlížeči nad stejným frontendem.
+
+## Fáze 3 — editor scény (4. 10. 2026)
+
+- `npm run check`: 0 chyb, 0 varování.
+- `npm test`: 14 úspěšných testů ve 2 souborech.
+- `npm run build`: úspěšný produkční build; nadále pouze doporučení Vite k velikosti hlavního bundle.
+- Nové testy: jedna historie pro celé tažení, zrušení transakce, duplikace nezávislých fixtures, odstranění referencí při mazání a obnova přes Undo, izolace simulace od historie, skupinové přichycení / rotace / velikost, hit test otočeného obdélníku a výběrový rámeček.
+- Chrome: tažení koule z (0, 4) do (2, 3) m a jedním Undo zpět; zvětšení poloměru přibližně z 0,3 na 0,6 m; otočení tažením přibližně o 89°; duplikace a Shift výběr více těles.
+- Inspector: změna poloměru a přímé Undo; přidání obdélníku, zadání rotace 30°, přímé spuštění simulace, Reset a následné Undo autorské rotace. Simulace nepřidala příkazy do historie.
+- Celá scéna: automatické přiblížení, rámeček kolem koule a obdélníku vybral dvě tělesa; Smazat ponechalo podlahu, Undo obnovilo obě tělesa.
+- Finální náhled: `artifacts/physicslab-editor.png`. Nativní Rust část se v této fázi neměnila; kontrola rozhraní proběhla v prohlížeči.

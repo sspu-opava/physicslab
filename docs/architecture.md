@@ -1,4 +1,4 @@
-# Architektura PhysicsLab — první etapa
+# Architektura PhysicsLab — základy a editor scény
 
 ```text
 Svelte komponenty → PhysicsDocument → SimulationCore → PhysicsEngineAdapter → Planck
@@ -24,7 +24,17 @@ Rust je pouze minimální Tauri host bez filesystem oprávnění nebo příkazů
 
 ## Rozšiřování
 
-Další práce zachová ID reference, fixtures oddělené od těles, SI jednotky a engine adapter. Nástroje přímé manipulace budou ve vlastní vrstvě `tools/`, historie bude používat Command Pattern. Síly, senzory a experimenty budou registrované interní moduly s deklarativními parametry. Grafy budou číst záznamy measurement vrstvy, nikoli Pixi objekty. Libovolný externí JavaScript a eval nejsou součástí návrhu.
+Další práce zachová ID reference, fixtures oddělené od těles, SI jednotky a engine adapter. Síly, senzory a experimenty budou registrované interní moduly s deklarativními parametry. Grafy budou číst záznamy measurement vrstvy, nikoli Pixi objekty. Libovolný externí JavaScript a eval nejsou součástí návrhu.
+
+## Editor scény (fáze 3)
+
+`SceneEditor` vlastní autorský dokument, výběr a historii. `DocumentCommand` implementuje rozhraní příkazu pomocí nezávislých serializovatelných snapshotů před a po změně. `CommandHistory` omezuje historii na 100 příkazů; nová změna zahodí redo větev. Změny fyzikálních snapshotů do historie nevstupují.
+
+Pointer tažení a editace pole Inspectoru používají transakci begin → preview → end. Během preview se model i fyzika aktualizují kvůli odezvě; jediný příkaz se uloží až při dokončení. Escape / pointercancel obnoví původní dokument při tažení. Tlačítka spuštění, historie a strukturálních úprav jsou během pointer tažení blokovaná. Editace pole se dokončí při ztrátě fokusu; po změně lze rovnou kliknout na Undo nebo Play. Jednoduché kliknutí bez přesunu nevytváří příkaz.
+
+`tools/SceneTools.ts` obsahuje hit test otočených těles, obálky, výběr rámečkem, přichycení a čistý `TransformGesture`. Všechny transformace pracují v metrech a vycházejí z původních těles, aby se numerické chyby neakumulovaly s počtem pointer událostí. Přesun přichytává první střed skupiny a zachovává rozestupy. Rotace a proporcionální změna velikosti používají průměr středů výběru. Změna velikosti upravuje všechny fixtures tělesa; explicitní hmotnost zůstává zachovaná.
+
+Canvas pouze převádí pointer souřadnice, řídí capture a deleguje nástrojům; renderer kreslí více vybraných těles a výběrový rámeček bez změny modelu. Inspector pracuje s posledním vybraným tělesem. Mazání odstraní navázané joints, sensors a measurements, a odstraní ID z cílových seznamů sil. Undo obnovuje tyto reference společně s tělesy. Duplikace vytváří nové ID a nezávislé fixtures; nekopíruje budoucí vazby nebo senzory.
 
 ## Ověření
 
