@@ -1,4 +1,4 @@
-# Architektura PhysicsLab — základy, editor scény a vazby
+# Architektura PhysicsLab — scéna, fyzika a měření
 
 ```text
 Svelte komponenty → PhysicsDocument → SimulationCore → PhysicsEngineAdapter → Planck
@@ -62,8 +62,18 @@ Nenásobné intervaly používají první fyzikální krok po plánovaném čase
 
 `FieldRegistry.ts` přidává vektorové gravitační zrychlení k World gravity a homogenní vítr `F = k (v_wind−v)` na všech dynamických tělesech. Každý krok SimulationCore vyhodnotí právě přítomné a zapnuté síly/pole ze snapshotu před krokem adaptéru; konstantní síla je tedy spojitá, nikoli impuls. Moduly zůstávají typovanými sériovými záznamy v dokumentu a neodkazují na objekty enginu. Validace probíhá před vložením do historie. Smazání tělesa odstraní neúplnou pružinu a sílu bez cíle; změna tělesa na statické je odmítnuta, pokud by síla ztratila všechny dynamické cíle.
 
-`ForceLab` v knihovně nabízí vytvoření, parametrizaci, zapnutí a smazání sil a polí. Úprava autorského dokumentu obnoví simulaci, běh jej nikdy nepřepisuje. Pole je globální a působí na všechna dynamická tělesa. Směrová lokální pole, jednorázový impuls, force sensors a vizualizace vektorů čekají na samostatnou etapu.
+`ForceLab` v knihovně nabízí vytvoření, parametrizaci, zapnutí a smazání sil a polí. Úprava autorského dokumentu obnoví simulaci, běh jej nikdy nepřepisuje. Pole je globální a působí na všechna dynamická tělesa. Směrová lokální pole a force sensors čekají na samostatnou etapu.
+
+## Vizualizace (fáze 7)
+
+`PhysicsRenderer` vykresluje volitelné rychlostní, zrychlovací a gravitační vektory, těžiště z adaptéru a právě aktivní kontaktní body. Vektory jsou převáděny z SI jednotek měřítkem v sekundách; délka vykreslení je omezena, aby při vysokých rychlostech neutekla mimo plátno. Kontakty poskytuje adapter z dotýkajících se Planck manifolds jako prosté souřadnice, UI nečte interní kontakty enginu.
+
+Trajektorie zůstává ve rendereru, není to fyzikální ani projektový stav. Vzorkuje simulační čas při nastavitelném intervalu, omezuje počet bodů 2–5000, používá barvu tělesa a volitelně zeslabuje starší úseky. Reset času i vypnutí stopy smaže uložené vykreslovací body; souřadnice zůstanou oddělené od snapshotů simulace. Projekty zatím neukládají nastavení překryvů ani stopy.
 
 ## Ověření
 
 `npm run check`, `npm test`, `npm run build`. Testy ověřují převod os a zoomu, nezávislost kroku na FPS, volný pád, kontakt s podlahou, impuls v SI, pause/reset, editor a historii, omezení všech čtyř vazeb a neměnnost počátečního dokumentu.
+
+## Projekty (fáze 8)
+
+`ProjectSerializer.ts` zapisuje obálku `format: "physicslab"`, `version: 1` a validovaný `PhysicsDocument`. Import odmítá nepodporované verze, nesprávné vazby, neplatné fyzikální parametry a soubory větší než 25 MiB. `SceneEditor.replaceDocument` vyčistí undo/redo historii a výběr; SimulationCore resetuje runtime stav. Naměřené časové řady a vykreslovací stopy zůstávají mimo trvalý dokument. V desktopu Rust příkazy otevřou výběrový dialog a čtou/zapisují jen uživatelem vybraný soubor. Ve webovém běhu se použije `<input type=file>` a stažení Blobem.

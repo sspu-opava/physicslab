@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { invoke, isTauri } from '@tauri-apps/api/core';
   import Toolbar from './components/toolbar/Toolbar.svelte';
   import Library from './components/library/Library.svelte';
   import SceneTree from './components/scene/SceneTree.svelte';
@@ -16,6 +17,7 @@
   import { SimulationCore, type SimulationStatus } from './lib/simulation/SimulationCore';
   import { SceneEditor } from './lib/scene/SceneEditor';
   import type { SceneTool } from './lib/tools/SceneTools';
+  import { deserializeProject, serializeProject } from './lib/document/ProjectSerializer';
   const initialDocument = createDocument();
   const editor = new SceneEditor(initialDocument);
   editor.select('ball');
@@ -29,6 +31,9 @@
   let body = $derived(document.bodies.find(b => b.id === selected));
   let joint = $derived(document.joints.find(j => j.id === selected));
   let notice = $state('');
+  let savedSnapshot = $state(JSON.stringify(initialDocument));
+  let projectInput: HTMLInputElement;
+  let projectDirty = $derived(JSON.stringify(document) !== savedSnapshot);
   let series = $state.raw<RecordedMeasurement[]>(simulation.recorder.series), readings = $state.raw(simulation.readings);
   function measurementAction(work: () => void): boolean {
     if (status !== 'STOPPED' || editing) return false;
@@ -99,6 +104,45 @@
     const next = createBody(crypto.randomUUID(), shape, { x: (document.bodies.length - 1) * 0.8, y: 4 });
     editor.addBody(next); syncEditor();
   }
+  function confirmDiscard(): boolean { return !projectDirty || window.confirm('Projekt obsahuje neuložené změny. Opravdu chcete pokračovat bez uložení?'); }
+  async function openProject() {
+    if (!confirmDiscard()) return;
+    try {
+      if (isTauri()) {
+        const contents = await invoke<string | null>('open_project_file');
+        if (contents === null) return;
+        loadProject(contents);
+      } else projectInput.click();
+    } catch (error) { notice = String(error instanceof Error ? error.message : error); }
+  }
+  function importProjectFile(event: Event) {
+    const input = event.currentTarget as HTMLInputElement, file = input.files?.[0];
+    if (!file) return;
+    void file.text().then(loadProject).catch(error => { notice = String(error instanceof Error ? error.message : error); }).finally(() => { input.value = ''; });
+  }
+  function loadProject(contents: string) {
+    const next = deserializeProject(contents);
+    editor.replaceDocument(next); document = editor.document; selection = []; canUndo = false; canRedo = false; editing = false;
+    simulation.reset(document); sync(); savedSnapshot = JSON.stringify(document); notice = '';
+  }
+  async function saveProject() {
+    try {
+      const contents = serializeProject(document);
+      if (isTauri()) {
+        const saved = await invoke<boolean>('save_project_file', { contents, defaultName: document.name });
+        if (!saved) return;
+      } else {
+        const blob = new Blob([contents], { type: 'application/json' }), url = URL.createObjectURL(blob), anchor = window.document.createElement('a');
+        anchor.href = url; anchor.download = `${document.name.replace(/[^\p{L}\p{N}_-]+/gu, '_') || 'projekt'}.json`; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      savedSnapshot = JSON.stringify(document); notice = '';
+    } catch (error) { notice = String(error instanceof Error ? error.message : error); }
+  }
+  function newProject() {
+    if (!confirmDiscard()) return;
+    const next = createDocument(); editor.replaceDocument(next); document = editor.document; selection = []; canUndo = false; canRedo = false; editing = false;
+    simulation.reset(document); sync(); savedSnapshot = JSON.stringify(document); notice = '';
+  }
   function keyboard(event: KeyboardEvent) {
     if (event.target instanceof HTMLElement && (event.target.closest('input,select,textarea,[contenteditable=true]'))) return;
     if (event.key === 'Escape') { gesture('cancel'); return; }
@@ -119,14 +163,14 @@
 </script>
 <svelte:window onkeydown={keyboard}/>
 <div class="app-shell">
-  <header class="titlebar"><div class="brand"><span class="brand-mark">P</span>PhysicsLab</div><span class="app-caption">Vizuální fyzikální laboratoř</span><span class="document-title">{document.name} <small>· nový projekt</small></span><span class="version">0.1.0</span></header>
+  <header class="titlebar"><div class="brand"><span class="brand-mark">P</span>PhysicsLab</div><span class="app-caption">Vizuální fyzikální laboratoř</span><span class="document-title">{document.name} {#if projectDirty}<small>· neuloženo</small>{:else}<small>· uloženo</small>{/if}</span><nav class="project-actions" aria-label="Projekt"><button onclick={newProject}>Nový</button><button onclick={openProject}>Otevřít</button><button class:unsaved={projectDirty} onclick={saveProject}>Uložit</button></nav><input bind:this={projectInput} class="project-input" type="file" accept=".json,application/json" onchange={importProjectFile} aria-label="Vyberte soubor projektu"/><span class="version">0.1.0</span></header>
   <Toolbar {status} {scale} {action} {editing} setScale={n => scale = n} {tool} setTool={next => tool = next}/>
   <div class="editor-bar">
     <div><button disabled={status !== 'STOPPED' || editing || !canUndo} onclick={() => editAction('undo')} title="Zpět (Ctrl+Z)">↶ Zpět</button><button disabled={status !== 'STOPPED' || editing || !canRedo} onclick={() => editAction('redo')} title="Znovu (Ctrl+Shift+Z)">↷ Znovu</button><button disabled={status !== 'STOPPED' || editing || !selection.some(id => document.bodies.some(body => body.id === id))} onclick={() => editAction('duplicate')}>⧉ Duplikovat</button><button disabled={status !== 'STOPPED' || editing || !selection.length} onclick={() => editAction('delete')}>× Smazat</button></div>
     <label>Přichytit <select value={snapInterval} onchange={e => snapInterval = Number(e.currentTarget.value)}>{#each [0, 0.01, 0.05, 0.1, 0.5, 1] as step}<option value={step}>{step === 0 ? 'Vypnuto' : `${step} m`}</option>{/each}</select></label><span>{selection.length} vybráno · Shift: více těles · tažení prázdné plochy: výběr</span>
   </div>
   {#if notice}<div class="app-notice" role="alert">{notice}<button onclick={() => notice = ''} aria-label="Zavřít upozornění">×</button></div>{/if}
-  <main class="workspace"><Library disabled={status !== 'STOPPED' || editing} {add} {document} {selection} {addJoint} addForce={force=>moduleAction(()=>editor.addForce(force))} {updateForce} removeForce={id=>moduleAction(()=>editor.removeForce(id))} addField={field=>moduleAction(()=>editor.addField(field))} {updateField} removeField={id=>moduleAction(()=>editor.removeField(id))}/><div class="center-column"><SimulationCanvas {document} state={snapshot} {selection} {select} {tool} {time} {snapInterval} editable={status === 'STOPPED'} {editing} {gesture} selectMany={ids => { editor.selection = ids; selection = [...ids]; }}/><Measurements state={snapshot[selected]} {time} name={body?.name ?? 'Bez výběru'} {document} selectedBodyId={body?.id ?? ''} {series} {readings} disabled={status !== 'STOPPED' || editing} add={addMeasurement} update={updateMeasurement} remove={id => measurementAction(() => editor.removeMeasurement(id))} clear={() => { simulation.clearMeasurements(); sync(); }}/></div><aside class="right-column"><SceneTree {document} {selection} {select}/>{#if joint}<JointInspector {joint} {document} disabled={status !== 'STOPPED' || editing} update={updateJoint}/>{:else}<Inspector {body} state={snapshot[selected]} disabled={status !== 'STOPPED'} {update} beginEdit={() => { if (status === 'STOPPED') editor.beginGesture(); }} endEdit={() => { if (editor.isEditing && !pointerEditing) { editor.endGesture('Změnit vlastnosti'); syncEditor(); } }}/>{/if}</aside></main>
+  <main class="workspace"><Library disabled={status !== 'STOPPED' || editing} {add} {document} {selection} {addJoint} addForce={force=>moduleAction(()=>editor.addForce(force))} {updateForce} removeForce={id=>moduleAction(()=>editor.removeForce(id))} addField={field=>moduleAction(()=>editor.addField(field))} {updateField} removeField={id=>moduleAction(()=>editor.removeField(id))}/><div class="center-column"><SimulationCanvas {document} state={snapshot} contacts={simulation.contactPoints} {selection} {select} {tool} {time} {snapInterval} editable={status === 'STOPPED'} {editing} {gesture} selectMany={ids => { editor.selection = ids; selection = [...ids]; }}/><Measurements state={snapshot[selected]} {time} name={body?.name ?? 'Bez výběru'} {document} selectedBodyId={body?.id ?? ''} {series} {readings} disabled={status !== 'STOPPED' || editing} add={addMeasurement} update={updateMeasurement} remove={id => measurementAction(() => editor.removeMeasurement(id))} clear={() => { simulation.clearMeasurements(); sync(); }}/></div><aside class="right-column"><SceneTree {document} {selection} {select}/>{#if joint}<JointInspector {joint} {document} disabled={status !== 'STOPPED' || editing} update={updateJoint}/>{:else}<Inspector {body} state={snapshot[selected]} disabled={status !== 'STOPPED'} {update} beginEdit={() => { if (status === 'STOPPED') editor.beginGesture(); }} endEdit={() => { if (editor.isEditing && !pointerEditing) { editor.endGesture('Změnit vlastnosti'); syncEditor(); } }}/>{/if}</aside></main>
   <footer class="statusbar"><span><i class:running={status === 'RUNNING'}></i>{status === 'RUNNING' ? 'Simulace běží' : status === 'PAUSED' ? 'Pozastaveno' : 'Režim úprav'}</span><span>{document.bodies.length} tělesa <b>·</b> {document.joints.length} vazby <b>·</b> Δt = 1/120 s</span><span class="status-tip">Kolečko: přiblížení <b>·</b> Posun: tažení plátna</span><span>+x doprava <b>·</b> +y nahoru</span></footer>
 </div>
 

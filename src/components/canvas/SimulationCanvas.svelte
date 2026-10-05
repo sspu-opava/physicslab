@@ -1,18 +1,19 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { onMount } from 'svelte';
   import type { BodyDefinition, PhysicsDocument, SceneState, Vector2 } from '../../lib/document/types';
-  import { PhysicsRenderer } from '../../lib/renderer/PhysicsRenderer';
+  import { PhysicsRenderer, defaultVisualization, type VisualizationOptions } from '../../lib/renderer/PhysicsRenderer';
   import { screenToWorld } from '../../lib/units/coordinates';
   import { hitTestJoint } from '../../lib/physics/joints/joints';
   import { hitTest, selectInBox, TransformGesture, type SceneTool, type SelectionBox } from '../../lib/tools/SceneTools';
-  let { document, state: snapshot, selection, select, selectMany, tool, time, snapInterval, editable, editing, gesture }: {
-    document: PhysicsDocument; state: SceneState; selection: string[]; select: (id: string, additive?: boolean) => void; selectMany: (ids: string[]) => void;
+  let { document, state: snapshot, contacts, selection, select, selectMany, tool, time, snapInterval, editable, editing, gesture }: {
+    document: PhysicsDocument; state: SceneState; contacts:{x:number;y:number}[]; selection: string[]; select: (id: string, additive?: boolean) => void; selectMany: (ids: string[]) => void;
     tool: SceneTool; time: number; snapInterval: number; editable: boolean; editing: boolean;
     gesture: (action: 'begin' | 'end' | 'cancel', bodies?: BodyDefinition[]) => void;
   } = $props();
   let host: HTMLDivElement;
   let renderer: PhysicsRenderer;
   let grid = $state(true), error = $state(''), zoom = $state(100);
+  let visuals=$state<VisualizationOptions>(structuredClone(defaultVisualization));
   let ready = $state(false);
   let dragging = false, last = { x: 0, y: 0 }, pointerId: number | undefined;
   let pointerStart = { x: 0, y: 0 }, moved = false;
@@ -24,7 +25,7 @@
       if (disposed) { renderer.destroy(); return; }
       ready = true;
       zoom = Math.round(renderer.view.zoom * 100);
-      const draw = () => { renderer.render(document, snapshot, selection, grid, box); frame = requestAnimationFrame(draw); }; draw();
+      const draw = () => { renderer.render(document, snapshot, selection, grid, box, visuals, time, contacts); frame = requestAnimationFrame(draw); }; draw();
     }).catch(e => { error = `Plátno se nepodařilo inicializovat: ${String(e)}`; });
     return () => { disposed = true; ready = false; cancelAnimationFrame(frame); renderer.destroy(); };
   });
@@ -71,7 +72,12 @@
 </script>
 <svelte:window onkeydown={e => { if (e.key === 'Escape' && pointerId !== undefined) finish(true); }}/>
 <section class="panel canvas-panel">
-  <div class="canvas-heading"><span>◇ <strong>{document.name}</strong> <small>Pracovní plocha</small></span><div><label><input type="checkbox" bind:checked={grid}/> Mřížka</label><button disabled={!ready} onclick={() => { renderer.fitToScene(document, snapshot); zoom = Math.round(renderer.view.zoom * 100); }} title="Zobrazit celou scénu">⤢</button><button onclick={() => { if (ready) { renderer.resetView(); zoom = Math.round(renderer.view.zoom * 100); } }} title="Obnovit pohled">⌖</button><span>{zoom} %</span></div></div>
+  <div class="canvas-heading"><span>◇ <strong>{document.name}</strong> <small>Pracovní plocha</small></span><div><label><input type="checkbox" bind:checked={grid}/> Mřížka</label><details class="visualization-menu"><summary>Vizualizace</summary><div class="visualization-popover">
+    <strong>Vektory a značky</strong><label><input type="checkbox" bind:checked={visuals.velocity}/> Rychlost</label><label><input type="checkbox" bind:checked={visuals.acceleration}/> Zrychlení</label><label><input type="checkbox" bind:checked={visuals.gravity}/> Gravitace</label><label><input type="checkbox" bind:checked={visuals.centerOfMass}/> Těžiště</label><label><input type="checkbox" bind:checked={visuals.contacts}/> Kontaktní body</label>
+    <label>Časová délka vektoru<input aria-label="Měřítko vektorů" type="range" min="0.05" max="0.8" step="0.05" bind:value={visuals.vectorScale}/> {visuals.vectorScale.toFixed(2)} s</label>
+    <strong>Trajektorie</strong><label><input type="checkbox" bind:checked={visuals.trajectory.enabled}/> Stopa pohybu</label><label>Vzorkování [s]<input type="number" min="0.01" max="2" step="0.01" bind:value={visuals.trajectory.sampleInterval}/></label><label>Maximum bodů<input type="number" min="2" max="5000" step="1" bind:value={visuals.trajectory.maxPoints}/></label><label><input type="checkbox" bind:checked={visuals.trajectory.fade}/> Plynulé zeslabení</label><button onclick={() => renderer?.clearTrails()}>Smazat stopy</button>
+    <small>Barva: rychlost azurová, zrychlení korálová, gravitace fialová, kontakty červené.</small>
+  </div></details><button disabled={!ready} onclick={() => { renderer.fitToScene(document, snapshot); zoom = Math.round(renderer.view.zoom * 100); }} title="Zobrazit celou scénu">⤢</button><button onclick={() => { if (ready) { renderer.resetView(); zoom = Math.round(renderer.view.zoom * 100); } }} title="Obnovit pohled">⌖</button><span>{zoom} %</span></div></div>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex (interactive canvas has global keyboard shortcuts) -->
   <div class="canvas-host" class:panning={tool === 'pan'} class:rotating={tool === 'rotate'} class:resizing={tool === 'resize'} bind:this={host} role="application" tabindex="0" aria-label="Fyzikální scéna" onpointerdown={pointerDown} onpointermove={pointerMove} onpointerup={e => { if (e.pointerId === pointerId) { pointerMove(e); finish(); } }} onpointercancel={() => finish(true)} onlostpointercapture={() => { if (pointerId !== undefined) finish(true); }} onwheel={e => { e.preventDefault(); if (!ready || pointerId !== undefined) return; const r = host.getBoundingClientRect(); renderer.zoomAt({ x: e.clientX - r.left, y: e.clientY - r.top }, Math.exp(-e.deltaY * 0.001)); zoom = Math.round(renderer.view.zoom * 100); }}>
     <div class="canvas-overlay"><span class="eyebrow">{document.name}</span><p>t = {time.toFixed(3)} s</p><p>g = {Math.abs(document.world.gravity.y)} m/s²</p></div>

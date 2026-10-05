@@ -24,6 +24,7 @@ export class CommandHistory {
   get canUndo(): boolean { return this.past.length > 0; }
   get canRedo(): boolean { return this.future.length > 0; }
   get undoLabel(): string { return this.past.at(-1)?.label ?? ''; }
+  clear(): void { this.past = []; this.future = []; }
   execute(command: EditorCommand): PhysicsDocument {
     const result = command.execute(); this.past.push(command);
     if (this.past.length > 100) this.past.shift();

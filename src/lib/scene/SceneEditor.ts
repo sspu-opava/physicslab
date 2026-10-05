@@ -14,6 +14,10 @@ export class SceneEditor {
   get isEditing(): boolean { return this.gestureStart !== undefined; }
   get hasPendingChanges(): boolean { return !!this.gestureStart && (JSON.stringify(this.gestureStart.bodies) !== JSON.stringify(this.document.bodies) || JSON.stringify(this.gestureStart.joints) !== JSON.stringify(this.document.joints)); }
   constructor(document: PhysicsDocument) { this.document = structuredClone(document); }
+  replaceDocument(document: PhysicsDocument): void {
+    if (this.isEditing) this.gestureStart = undefined;
+    this.history.clear(); this.document = structuredClone(document); this.selection = [];
+  }
   select(id: string, additive = false): void {
     if (!id) { if (!additive) this.selection = []; return; }
     if (![...this.document.bodies, ...this.document.joints].some(object => object.id === id)) return;

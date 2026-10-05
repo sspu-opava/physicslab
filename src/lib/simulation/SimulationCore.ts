@@ -12,6 +12,7 @@ export class SimulationCore {
   previous: SceneState = {};
   current: SceneState = {};
   readings: Record<string, number | null> = {};
+  contactPoints: {x:number;y:number}[] = [];
   readonly recorder = new MeasurementRecorder();
   private impulsesApplied = false;
   constructor(private adapter: PhysicsEngineAdapter, private document: PhysicsDocument) { this.reset(); }
@@ -21,6 +22,8 @@ export class SimulationCore {
     for (const body of this.document.bodies) this.adapter.createBody(body);
     for (const joint of this.document.joints) this.adapter.createJoint(joint);
     this.current = this.snapshot(); this.previous = this.current;
+    this.contactPoints=[];
+    for(const body of this.document.bodies)if(this.current[body.id])this.current[body.id].acceleration={...this.document.world.gravity};
     this.readings = readSensors(this.document, this.current);
     this.recorder.reset(this.document); this.recorder.sample(0, this.readings);
   }
@@ -30,6 +33,8 @@ export class SimulationCore {
     applyForces(this.document.forces,this.document.bodies,this.current,this.adapter);
     applyFields(this.document.fields,this.document.bodies,this.current,this.adapter);
     this.previous = this.current; this.adapter.step(dt); this.current = this.snapshot();
+    for(const body of this.document.bodies){const now=this.current[body.id],before=this.previous[body.id];if(now&&before)now.acceleration={x:(now.velocity.x-before.velocity.x)/dt,y:(now.velocity.y-before.velocity.y)/dt}}
+    this.contactPoints=this.adapter.getContactPoints();
     this.readings = readSensors(this.document, this.current, this.previous, dt);
     this.recorder.sample(this.clock.time + dt, this.readings);
   };

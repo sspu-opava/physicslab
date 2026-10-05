@@ -32,6 +32,7 @@ npm run tauri build -- --no-bundle
 - Čtyři fyzikální vazby: otočný kloub, pevná vzdálenost, posuvný kloub a pevné spojení; tvorba, výběr, vlastnosti a Undo/Redo.
 - Modulární síly: jednorázový impuls, konstantní vektorová síla, lineární odpor a pružina s klidovou délkou, tuhostí a tlumením.
 - Přídavné homogenní gravitační pole a pole větru; jejich vektory, koeficienty, zapnutí i odstranění lze upravit.
+- Vektory rychlosti a zrychlení, gravitace, těžiště a kontaktní body; nastavitelné trajektorie s délkou, intervalem a zeslabováním.
 - Inspector pro počáteční polohu, rotaci, hmotnost, tření, restituci, tlumení, rychlost a barvu.
 - Senzory polohy, rychlosti, zrychlení, úhlu, úhlové rychlosti a energií; záznam v simulačním čase.
 - Více křivek v grafu se společnými jednotkami, tabulka hodnot a export CSV/JSON.
@@ -63,6 +64,8 @@ Záznam se vzorkuje po fyzikálních krocích. Interval je v simulačních sekun
 
 Zrychlení je konečná diference rychlostí za jeden fyzikální krok, včetně nárazů; na t = 0 není určeno. Kinetická energie zahrnuje posuv i rotaci podle skutečné hmotnosti a momentu setrvačnosti enginu. Potenciální energie je `−m g·r` pro homogenní gravitaci, s nulou v počátku; mechanická energie nezahrnuje budoucí pružiny či jiná pole. Statická a kinematická tělesa mají v enginu nulovou hmotnost, tedy nulovou energii. Vzorky běhu jsou dočasné a nejsou součástí autorského dokumentu.
 
+V horní nabídce plátna otevřete **Vizualizace**. Přepínače zobrazí vektory rychlosti, zrychlení a gravitace, těžiště i kontaktní body. Měřítko vektorů upraví délku šipek. **Stopa pohybu** vzorkuje trajektorii podle simulačního času; nastavte interval, počet bodů (max. 5000) a zeslabení. Reset simulace i vypnutí stopu vyčistí; nastavení vizualizace se zatím do projektu neukládá.
+
 ## Síly a pole
 
 V knihovně zvolte sílu. Konstantní síla a impuls nabízí složky x/y v N, respektive N·s. Impuls se provede před prvním fyzikálním krokem po Resetu; Pauza a opětovné spuštění další impuls nepřidají. Pružina potřebuje dvě různá dynamická tělesa a parametry klidové délky, tuhosti a tlumení. Lineární odpor se zadává koeficientem kg/s a působí opačně proti rychlosti.
@@ -71,7 +74,9 @@ Pole přidáte pod formulářem sil. Gravitační zrychlení se přičítá ke g
 
 ## Další etapy
 
-Další fáze: ukládání projektů, experimenty a obecné registry pluginů. Lanová vazba a další typy polí / sil zatím nejsou implementované. Silové a kontaktní senzory potřebují samostatnou vrstvu událostí. Trvalé skupiny, polygonová tělesa a geometrické úchyty na plátně také čekají na další etapy. Konfigurace nyní vytváří desktopový executable s vlastní ikonou, bez instalátoru; distribuce přijde později.
+**Projekt** vytvořte, otevřete nebo uložte z horní lišty. Soubor JSON má obálku `format: "physicslab"`, verzi formátu a autorský dokument; při načtení se ověří verze, fyzikální hodnoty a návazné objekty. Runtime průběh simulace, naměřené vzorky a vizualizační stopy se neukládají. Při otevření projektu se vymaže historie úprav a simulace se vrátí do počátečního stavu. Před opuštěním neuložených změn aplikace požádá o potvrzení. Desktopová aplikace používá nativní dialogy a prohlížeč standardní výběr souboru a stažení JSON. Import a správa obrazových assetů zatím nejsou propojené s dokumentem.
+
+Dalším krokem projektového systému je AssetManager pro assety navázané pomocí `assetId`; potom přijde režim experimentů. Lanová vazba a další typy polí / sil zatím nejsou implementované. Silové senzory potřebují samostatnou vrstvu událostí. Trvalé skupiny, polygonová tělesa a geometrické úchyty na plátně také čekají na další etapy. Konfigurace nyní vytváří desktopový executable s vlastní ikonou, bez instalátoru; distribuce přijde později.
 
 Viz [architektura](docs/architecture.md).
 

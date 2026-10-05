@@ -61,3 +61,22 @@ Port 1420 byl na tomto počítači odmítnut chybou EACCES; frontend i Tauri pro
 - Gravitační pole přičítá zadané zrychlení ke gravitaci světa; vítr uplatňuje lineární odpor podle relativní rychlosti prostředí.
 - Vizuální kontrolu aplikace nebylo možné provést, protože prohlížečové nástroje nejsou v této relaci dostupné.
 - Editor umožňuje také jednorázový impuls: aplikuje se při prvním simulačním kroku po resetu, opětovné spuštění po pauze ho neopakuje.
+
+## Fáze 7 — vizualizace (5. 10. 2026)
+
+- `npm run check`: 0 chyb, 0 varování.
+- `npm run build`: úspěšný produkční build; hlavní bundle 575,77 kB (164,82 kB gzip), Vite upozorňuje na doporučené rozdělení bundlu.
+- `git diff --check`: bez chyb whitespace.
+- Překryvy plátna: rychlost, zrychlení, vektor gravitace, těžiště a Planck kontaktní body s přepínači; měřítko šipek lze upravit.
+- Trajektorie má nastavitelné simulační vzorkování, limit 2–5000 bodů a volitelné zeslabení. Vzorky drží renderer mimo fyzikální dokument; Reset i vypnutí je smaže.
+- `npm test` v této fázi nebyl spuštěn. Prohlížečové rozhraní nebylo možné ručně ověřit, protože nástroje prohlížeče jsou nedostupné v této relaci.
+
+## Fáze 8 — projektový systém (5. 10. 2026)
+
+- `npm run check`: 0 chyb, 0 varování.
+- `npm run build`: úspěšný produkční build; Vite upozorňuje na hlavní bundle nad 500 kB.
+- `cargo check`: úspěšná kompilace Tauri dialog pluginu a příkazů pro výběr, načtení a uložení projektu.
+- Testy nebyly spuštěny.
+- Import ověřuje obálku/verzi projektu, limity souboru, tvar těles, parametry modulů a návaznost vazeb, senzorů i měření; před výměnou scény deserializace nejprve dokončí validaci.
+- Nový a načtený projekt vyčistí historii úprav a resetují simulaci. Browser ukládá JSON přes Blob, desktop používá nativní dialogy.
+- AssetManager a import obrázků zůstávají nedokončené; aktuální projektový JSON ukládá fyzikální dokument bez assetů.

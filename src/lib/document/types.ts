@@ -32,5 +32,5 @@ export interface PhysicsDocument {
   joints: JointDefinition[]; forces: ForceDefinition[]; fields: FieldDefinition[];
   sensors: SensorDefinition[]; measurements: MeasurementDefinition[]; createdAt: string; modifiedAt: string;
 }
-export interface BodyState { position: Vector2; angle: number; velocity: Vector2; angularVelocity: number; mass?: number; inertia?: number }
+export interface BodyState { position: Vector2; centerOfMass?: Vector2; angle: number; velocity: Vector2; acceleration?: Vector2; angularVelocity: number; mass?: number; inertia?: number }
 export type SceneState = Record<string, BodyState>;

@@ -10,5 +10,6 @@ export interface PhysicsEngineAdapter {
   setBodyTransform(id: string, position: Vector2, angle: number): void;
   step(dt: number): void;
   getBodyState(id: string): BodyState;
+  getContactPoints(): Vector2[];
   reset(): void;
 }

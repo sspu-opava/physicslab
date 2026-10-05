@@ -50,8 +50,13 @@ export class PlanckPhysicsAdapter implements PhysicsEngineAdapter {
   setBodyTransform(id: string, position: Vector2, angle: number): void { this.body(id).setTransform(Vec2(position.x, position.y), angle); }
   step(dt: number): void { this.world.step(dt, 8, 3); }
   getBodyState(id: string): BodyState {
-    const b = this.body(id), p = b.getPosition(), v = b.getLinearVelocity();
-    return { position: { x: p.x, y: p.y }, angle: b.getAngle(), velocity: { x: v.x, y: v.y }, angularVelocity: b.getAngularVelocity(), mass: b.getMass(), inertia: b.getInertia() };
+    const b = this.body(id), p = b.getPosition(), c=b.getWorldCenter(), v = b.getLinearVelocity();
+    return { position: { x: p.x, y: p.y }, centerOfMass:{x:c.x,y:c.y}, angle: b.getAngle(), velocity: { x: v.x, y: v.y }, angularVelocity: b.getAngularVelocity(), mass: b.getMass(), inertia: b.getInertia() };
+  }
+  getContactPoints(): Vector2[] {
+    const points:Vector2[]=[];let contact=this.world.getContactList();
+    while(contact){if(contact.isTouching()){const manifold=contact.getWorldManifold(null);if(manifold)for(let i=0;i<manifold.pointCount;i++)points.push({x:manifold.points[i].x,y:manifold.points[i].y})}contact=contact.getNext()}
+    return points;
   }
   reset(): void { this.world = new World(); this.bodies.clear(); this.definitions.clear(); this.joints.clear(); }
 }
