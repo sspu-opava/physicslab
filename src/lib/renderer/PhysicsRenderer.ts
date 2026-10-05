@@ -17,7 +17,7 @@ export class PhysicsRenderer {
   private ready = false;
   view: Viewport = { origin: { x: 0, y: 0 }, pixelsPerMeter: 100, zoom: 1 };
   async initialize(host: HTMLDivElement): Promise<void> {
-    await this.app.init({ background: '#101e28', antialias: true, resolution: window.devicePixelRatio, autoDensity: true, preference: 'webgl', autoStart: false, width: host.clientWidth, height: host.clientHeight });
+    await this.app.init({ backgroundAlpha: 0, antialias: true, resolution: window.devicePixelRatio, autoDensity: true, preference: 'webgl', autoStart: false, width: host.clientWidth, height: host.clientHeight });
     host.appendChild(this.app.canvas); this.app.stage.addChild(this.grid, this.trails, this.joints, this.bodies, this.vectors, this.overlay); this.ready = true;
     this.resetView();
     this.observer = new ResizeObserver(() => {

@@ -79,4 +79,4 @@ Port 1420 byl na tomto počítači odmítnut chybou EACCES; frontend i Tauri pro
 - Testy nebyly spuštěny.
 - Import ověřuje obálku/verzi projektu, limity souboru, tvar těles, parametry modulů a návaznost vazeb, senzorů i měření; před výměnou scény deserializace nejprve dokončí validaci.
 - Nový a načtený projekt vyčistí historii úprav a resetují simulaci. Browser ukládá JSON přes Blob, desktop používá nativní dialogy.
-- AssetManager a import obrázků zůstávají nedokončené; aktuální projektový JSON ukládá fyzikální dokument bez assetů.
+- AssetManager vloží PNG/JPEG/WebP/GIF do dokumentu jako data URL s ID assetu, ověřeným MIME typem a limitem 8 MiB na soubor; pozadí odkazuje přes `assetId` a jeho odstranění reference vyčistí.

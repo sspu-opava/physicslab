@@ -11,6 +11,6 @@ export function createDocument(empty = false): PhysicsDocument {
   ground.name = 'Podlaha'; ground.type = 'static'; ground.fixtures[0].shape = { type: 'box', width: 10, height: 0.4 };
   ground.appearance = { fill: '#667782', stroke: '#a5b2b9', strokeWidth: 1, opacity: 1 };
   return { id: 'free-fall', name: 'Volný pád', version: 1,
-    world: { gravity: { x: 0, y: -9.81 }, timeScale: 1, pixelsPerMeter: 100, background: '#101e28' },
-    bodies: empty ? [] : [ground, createBody('ball', 'circle')], joints: [], forces: [], fields: [], sensors: [], measurements: [], createdAt: now, modifiedAt: now };
+    world: { gravity: { x: 0, y: -9.81 }, timeScale: 1, pixelsPerMeter: 100, background: '#101e28', backgroundAssetId: null },
+    bodies: empty ? [] : [ground, createBody('ball', 'circle')], joints: [], forces: [], fields: [], assets: [], sensors: [], measurements: [], createdAt: now, modifiedAt: now };
 }

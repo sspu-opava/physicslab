@@ -1,5 +1,6 @@
 export interface Vector2 { x: number; y: number }
-export interface WorldDefinition { gravity: Vector2; timeScale: number; pixelsPerMeter: number; background: string }
+export interface WorldDefinition { gravity: Vector2; timeScale: number; pixelsPerMeter: number; background: string; backgroundAssetId: string | null }
+export interface ProjectAsset { assetId: string; name: string; mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'; dataUrl: string; sizeBytes: number }
 export type ShapeDefinition = { type: 'circle'; radius: number } | { type: 'box'; width: number; height: number };
 export interface FixtureDefinition { shape: ShapeDefinition; density: number; friction: number; restitution: number; category: number; mask: number }
 export interface BodyDefinition {
@@ -29,7 +30,7 @@ export interface SensorDefinition { id: string; name: string; type: SensorType; 
 export interface MeasurementDefinition { id: string; sensorId: string; sampleInterval: number; maxSamples?: number }
 export interface PhysicsDocument {
   id: string; name: string; version: number; world: WorldDefinition; bodies: BodyDefinition[];
-  joints: JointDefinition[]; forces: ForceDefinition[]; fields: FieldDefinition[];
+  joints: JointDefinition[]; forces: ForceDefinition[]; fields: FieldDefinition[]; assets: ProjectAsset[];
   sensors: SensorDefinition[]; measurements: MeasurementDefinition[]; createdAt: string; modifiedAt: string;
 }
 export interface BodyState { position: Vector2; centerOfMass?: Vector2; angle: number; velocity: Vector2; acceleration?: Vector2; angularVelocity: number; mass?: number; inertia?: number }

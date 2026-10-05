@@ -1,4 +1,5 @@
-import type { PhysicsDocument } from './types';
+import type { PhysicsDocument, ProjectAsset } from './types';
+import { AssetManager, MAX_PROJECT_ASSET_BYTES } from './AssetManager';
 import { validateJoint } from '../physics/joints/joints';
 import { validateForce } from '../physics/modules/ForceRegistry';
 import { validateField } from '../physics/modules/FieldRegistry';
@@ -30,10 +31,19 @@ export function validateDocument(value: unknown): PhysicsDocument {
   const doc = value as unknown as PhysicsDocument;
   if (!text(doc.id) || !text(doc.name) || !Number.isInteger(doc.version) || doc.version < 1) throw new Error('Dokument nemá platné ID, název nebo verzi.');
   if (!text(doc.createdAt) || !text(doc.modifiedAt)) throw new Error('Dokument nemá platná časová razítka.');
-  if (!record(doc.world) || !finite(doc.world.timeScale) || doc.world.timeScale <= 0 || !finite(doc.world.pixelsPerMeter) || doc.world.pixelsPerMeter <= 0 || !text(doc.world.background)) throw new Error('Dokument obsahuje neplatné nastavení světa.');
+  if (!record(doc.world) || !finite(doc.world.timeScale) || doc.world.timeScale <= 0 || !finite(doc.world.pixelsPerMeter) || doc.world.pixelsPerMeter <= 0 || !text(doc.world.background) || (doc.world.backgroundAssetId !== null && !text(doc.world.backgroundAssetId))) throw new Error('Dokument obsahuje neplatné nastavení světa.');
   vector(doc.world.gravity, 'Gravitace');
-  for (const key of ['bodies', 'joints', 'forces', 'fields', 'sensors', 'measurements'] as const) array(doc[key], key);
+  for (const key of ['bodies', 'joints', 'forces', 'fields', 'assets', 'sensors', 'measurements'] as const) array(doc[key], key);
   uniqueIds([doc.bodies, doc.joints, doc.forces, doc.fields, doc.sensors, doc.measurements]);
+  const assetIds = new Set<string>(); let assetBytes = 0;
+  for (const asset of doc.assets) {
+    if (!record(asset) || !text(asset.assetId) || !text(asset.name) || !text(asset.mimeType) || !text(asset.dataUrl) || !finite(asset.sizeBytes)) throw new Error('Projekt obsahuje neplatný asset.');
+    AssetManager.validate(asset as ProjectAsset);
+    if (assetIds.has(asset.assetId)) throw new Error('ID assetu se v projektu opakuje.');
+    assetIds.add(asset.assetId); assetBytes += asset.sizeBytes;
+  }
+  if (assetBytes > MAX_PROJECT_ASSET_BYTES) throw new Error('Obrázky v projektu překračují souhrnný limit 16 MiB.');
+  if (doc.world.backgroundAssetId && !assetIds.has(doc.world.backgroundAssetId)) throw new Error('Obrázek pozadí odkazuje na neexistující asset.');
   for (const body of doc.bodies) {
     if (!record(body) || !text(body.id) || !text(body.name) || !['static', 'dynamic', 'kinematic'].includes(body.type)) throw new Error('Projekt obsahuje neplatné těleso.');
     vector(body.position, `Poloha tělesa ${body.name}`); vector(body.initialVelocity, `Počáteční rychlost tělesa ${body.name}`);
@@ -70,6 +80,11 @@ export function migrateProject(value: unknown): PhysicsDocument {
     const migrate = migrations[project.version];
     if (!migrate) throw new Error(`Verze projektu ${project.version} již není podporována.`);
     project = { ...project, version: project.version + 1, document: migrate(project.document) as PhysicsDocument };
+  }
+  if (record(project.document)) {
+    const legacy = project.document;
+    const world = legacy.world;
+    project = { ...project, document: { ...legacy, assets: legacy.assets ?? [], world: record(world) ? { ...world, backgroundAssetId: world.backgroundAssetId ?? null } : world } as PhysicsDocument };
   }
   return validateDocument(project.document);
 }

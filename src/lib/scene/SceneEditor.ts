@@ -1,4 +1,5 @@
-import type { BodyDefinition, JointDefinition, PhysicsDocument, SensorDefinition, MeasurementDefinition } from '../document/types';
+import type { BodyDefinition, JointDefinition, PhysicsDocument, SensorDefinition, MeasurementDefinition, ProjectAsset } from '../document/types';
+import { AssetManager } from '../document/AssetManager';
 import { validateSensor } from '../measurements/SensorRegistry';
 import { validateMeasurement } from '../measurements/MeasurementRecorder';
 import { validateForce } from '../physics/modules/ForceRegistry';
@@ -68,6 +69,13 @@ export class SceneEditor {
   addField(field: PhysicsDocument['fields'][number]):void{validateField(field);if(this.document.fields.some(f=>f.id===field.id))throw new Error('ID pole už existuje.');this.commit('Přidat pole',{...this.document,fields:[...this.document.fields,field]})}
   updateField(field: PhysicsDocument['fields'][number]):void{validateField(field);if(!this.document.fields.some(f=>f.id===field.id))throw new Error('Pole neexistuje.');this.commit('Změnit pole',{...this.document,fields:this.document.fields.map(f=>f.id===field.id?structuredClone(field):f)})}
   removeField(id:string):void{const fields=this.document.fields.filter(f=>f.id!==id);if(fields.length!==this.document.fields.length)this.commit('Smazat pole',{...this.document,fields})}
+  addAsset(asset: ProjectAsset): void { this.commit('Přidat asset', AssetManager.add(this.document, asset)); }
+  removeAsset(assetId: string): void { const next = AssetManager.remove(this.document, assetId); if (next !== this.document) this.commit('Odebrat asset', next); }
+  setBackgroundAsset(assetId: string | null): void {
+    if (assetId && !this.document.assets.some(asset => asset.assetId === assetId)) throw new Error('Vybraný obrázek už v projektu není.');
+    if (this.document.world.backgroundAssetId === assetId) return;
+    this.commit('Nastavit obrázek pozadí', { ...this.document, world: { ...this.document.world, backgroundAssetId: assetId } });
+  }
   updateJoint(joint: JointDefinition): void {
     validateJoint(joint, this.document.bodies);
     const joints = this.document.joints.map(value => value.id === joint.id ? structuredClone(joint) : value);

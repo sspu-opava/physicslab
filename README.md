@@ -74,9 +74,9 @@ Pole přidáte pod formulářem sil. Gravitační zrychlení se přičítá ke g
 
 ## Další etapy
 
-**Projekt** vytvořte, otevřete nebo uložte z horní lišty. Soubor JSON má obálku `format: "physicslab"`, verzi formátu a autorský dokument; při načtení se ověří verze, fyzikální hodnoty a návazné objekty. Runtime průběh simulace, naměřené vzorky a vizualizační stopy se neukládají. Při otevření projektu se vymaže historie úprav a simulace se vrátí do počátečního stavu. Před opuštěním neuložených změn aplikace požádá o potvrzení. Desktopová aplikace používá nativní dialogy a prohlížeč standardní výběr souboru a stažení JSON. Import a správa obrazových assetů zatím nejsou propojené s dokumentem.
+**Projekt** vytvořte, otevřete nebo uložte z horní lišty. Soubor JSON má obálku `format: "physicslab"`, verzi formátu a autorský dokument; při načtení se ověří verze, fyzikální hodnoty a návazné objekty. V nabídce **Obrázky** lze vložit PNG, JPEG, WebP nebo GIF do 8 MiB a použít jej jako pozadí. Obrázky se ukládají vložené v projektu pod stabilním `assetId`, takže projekt nepoužívá absolutní cesty a zůstává přenositelný. Runtime průběh simulace, naměřené vzorky a vizualizační stopy se neukládají. Při otevření projektu se vymaže historie úprav a simulace se vrátí do počátečního stavu. Před opuštěním neuložených změn aplikace požádá o potvrzení. Desktopová aplikace používá nativní dialogy a prohlížeč standardní výběr souboru a stažení JSON.
 
-Dalším krokem projektového systému je AssetManager pro assety navázané pomocí `assetId`; potom přijde režim experimentů. Lanová vazba a další typy polí / sil zatím nejsou implementované. Silové senzory potřebují samostatnou vrstvu událostí. Trvalé skupiny, polygonová tělesa a geometrické úchyty na plátně také čekají na další etapy. Konfigurace nyní vytváří desktopový executable s vlastní ikonou, bez instalátoru; distribuce přijde později.
+Další fází je režim experimentů. Lanová vazba a další typy polí / sil zatím nejsou implementované. Silové senzory potřebují samostatnou vrstvu událostí. Trvalé skupiny, polygonová tělesa a geometrické úchyty na plátně také čekají na další etapy. Konfigurace nyní vytváří desktopový executable s vlastní ikonou, bez instalátoru; distribuce přijde později.
 
 Viz [architektura](docs/architecture.md).
 

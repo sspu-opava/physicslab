@@ -77,3 +77,5 @@ Trajektorie zůstává ve rendereru, není to fyzikální ani projektový stav. 
 ## Projekty (fáze 8)
 
 `ProjectSerializer.ts` zapisuje obálku `format: "physicslab"`, `version: 1` a validovaný `PhysicsDocument`. Import odmítá nepodporované verze, nesprávné vazby, neplatné fyzikální parametry a soubory větší než 25 MiB. `SceneEditor.replaceDocument` vyčistí undo/redo historii a výběr; SimulationCore resetuje runtime stav. Naměřené časové řady a vykreslovací stopy zůstávají mimo trvalý dokument. V desktopu Rust příkazy otevřou výběrový dialog a čtou/zapisují jen uživatelem vybraný soubor. Ve webovém běhu se použije `<input type=file>` a stažení Blobem.
+
+Project assets are embedded as validated PNG/JPEG/WebP/GIF data URLs, identified by `assetId`, with an 8 MiB per-file and 16 MiB combined source-image limit. `AssetManager` supports import, lookup, background assignment, and removal; the background reference participates in undo/redo and is cleared when its asset is removed. The Pixi canvas remains transparent so its host can render the image behind the physics grid and bodies. Older v1 JSON files without asset metadata migrate to an empty asset collection.
