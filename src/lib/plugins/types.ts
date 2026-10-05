@@ -14,7 +14,7 @@ export interface InternalPluginDefinition {
   label: string;
   description?: string;
   parameters?: readonly PluginParameterDefinition[];
-  targetMode?: 'single' | 'pair' | 'many';
+  targetMode?: 'single' | 'pair';
 }
 
 export function defaultPluginParameters(definitions: readonly PluginParameterDefinition[]): Record<string, number> {

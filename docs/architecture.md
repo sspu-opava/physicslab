@@ -83,3 +83,7 @@ Project assets are embedded as validated PNG/JPEG/WebP/GIF data URLs, identified
 ## Internal plugin architecture (phase 10)
 
 `lib/plugins/types.ts` defines the shared plugin metadata contract and numeric parameter schema (`key`, label, unit, default, range, and step). The force and field registries pair that declarative metadata with typed creation, validation, and simulation callbacks; force plugins also declare whether they target one body or a pair. Sensor plugins use the shared identity and label contract while exposing their output unit and snapshot reader. `ForceLab` renders creation and editing controls from these registry definitions, so adding an internal force or field no longer requires a type-specific parameter form.
+
+## Advanced vector fields (phase 11)
+
+Field plugins evaluate an acceleration vector for each dynamic body from a shared context containing its definition and current state. `applyFields` converts that acceleration to force using body mass before forwarding it to the physics adapter. Uniform gravity and wind use the same evaluator contract; radial gravity adds a softened inverse-square field around a configurable center, keeping the value finite at the origin. Field parameters remain validated, declarative, and serializable as ordinary document modules.

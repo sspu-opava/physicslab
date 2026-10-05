@@ -1,17 +1,98 @@
-import type { BodyDefinition, FieldDefinition, SceneState, Vector2 } from '../../document/types';
+import type { BodyDefinition, BodyState, FieldDefinition, SceneState, Vector2 } from '../../document/types';
 import type { PhysicsEngineAdapter } from '../PhysicsEngineAdapter';
 import type { InternalPluginDefinition, PluginParameterDefinition } from '../../plugins/types';
 
-export interface FieldPlugin extends InternalPluginDefinition { parameters: readonly PluginParameterDefinition[]; create: (id: string) => FieldDefinition; validate: (field: FieldDefinition) => void; apply: (field: FieldDefinition, bodies: readonly BodyDefinition[], states: SceneState, engine: PhysicsEngineAdapter) => void }
-function number(parameters: Record<string,unknown>, key:string, min= -Infinity):number { const value=parameters[key]; if(typeof value!=='number'||!Number.isFinite(value)||value<min)throw new Error(`Parametr ${key} musí být číslo ≥ ${min}.`); return value; }
-function vector(parameters:Record<string,unknown>,key:string):Vector2{return{x:number(parameters,`${key}X`),y:number(parameters,`${key}Y`)}}
+export interface VectorFieldContext {
+  body: BodyDefinition;
+  state: BodyState;
+}
+
+/** Each field evaluates an acceleration vector at a body's current state. */
+export interface FieldPlugin extends InternalPluginDefinition {
+  parameters: readonly PluginParameterDefinition[];
+  create: (id: string) => FieldDefinition;
+  validate: (field: FieldDefinition) => void;
+  evaluate: (field: FieldDefinition, context: VectorFieldContext) => Vector2;
+}
+
+function number(parameters: Record<string, unknown>, key: string, min = -Infinity): number {
+  const value = parameters[key];
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min) throw new Error(`Parametr ${key} musí být konečné číslo ≥ ${min}.`);
+  return value;
+}
+
+function vector(parameters: Record<string, unknown>, key: string): Vector2 {
+  return { x: number(parameters, `${key}X`), y: number(parameters, `${key}Y`) };
+}
+
+const field = (id: string, name: string, type: string, parameters: Record<string, unknown>): FieldDefinition => ({ id, name, type, enabled: true, parameters });
+
 export const fieldRegistry: readonly FieldPlugin[] = [
-  {type:'gravity',label:'Přídavná gravitace', description: 'Adds acceleration to the world gravity.', parameters: [{key:'accelerationX',label:'Acceleration x',unit:'m/s^2',defaultValue:0,step:0.1},{key:'accelerationY',label:'Acceleration y',unit:'m/s^2',defaultValue:-9.81,step:0.1}],create:id=>({id,name:'Přídavná gravitace',type:'gravity',enabled:true,parameters:{accelerationX:0,accelerationY:-9.81}}),
-    validate:f=>{vector(f.parameters,'acceleration')},
-    apply:(f,bodies,_states,engine)=>{const g=vector(f.parameters,'acceleration'); for(const body of bodies)if(body.type==='dynamic')engine.applyForce(body.id,{x:body.mass*g.x,y:body.mass*g.y});}},
-  {type:'wind',label:'Vítr', description: 'Applies drag from the difference between body and wind velocity.', parameters: [{key:'velocityX',label:'Velocity x',unit:'m/s',defaultValue:5,step:0.1},{key:'velocityY',label:'Velocity y',unit:'m/s',defaultValue:0,step:0.1},{key:'coefficient',label:'Drag coefficient',unit:'kg/s',defaultValue:0.5,min:0,step:0.01}],create:id=>({id,name:'Vítr',type:'wind',enabled:true,parameters:{velocityX:5,velocityY:0,coefficient:0.5}}),
-    validate:f=>{vector(f.parameters,'velocity');number(f.parameters,'coefficient',0)},
-    apply:(f,bodies,states,engine)=>{const wind=vector(f.parameters,'velocity'),k=number(f.parameters,'coefficient',0);for(const body of bodies)if(body.type==='dynamic'){const v=states[body.id]?.velocity;if(v)engine.applyForce(body.id,{x:k*(wind.x-v.x),y:k*(wind.y-v.y)});}}}
+  {
+    type: 'gravity', label: 'Přídavná gravitace', description: 'Rovnoměrné zrychlení přičtené ke gravitaci světa.',
+    parameters: [
+      { key: 'accelerationX', label: 'Zrychlení x', unit: 'm/s²', defaultValue: 0, step: 0.1 },
+      { key: 'accelerationY', label: 'Zrychlení y', unit: 'm/s²', defaultValue: -9.81, step: 0.1 },
+    ],
+    create: id => field(id, 'Přídavná gravitace', 'gravity', { accelerationX: 0, accelerationY: -9.81 }),
+    validate: item => { vector(item.parameters, 'acceleration'); },
+    evaluate: (item) => vector(item.parameters, 'acceleration'),
+  },
+  {
+    type: 'wind', label: 'Vítr', description: 'Odpor úměrný rozdílu rychlosti tělesa a větru.',
+    parameters: [
+      { key: 'velocityX', label: 'Rychlost větru x', unit: 'm/s', defaultValue: 5, step: 0.1 },
+      { key: 'velocityY', label: 'Rychlost větru y', unit: 'm/s', defaultValue: 0, step: 0.1 },
+      { key: 'coefficient', label: 'Koeficient odporu', unit: 'kg/s', defaultValue: 0.5, min: 0, step: 0.01 },
+    ],
+    create: id => field(id, 'Vítr', 'wind', { velocityX: 5, velocityY: 0, coefficient: 0.5 }),
+    validate: item => { vector(item.parameters, 'velocity'); number(item.parameters, 'coefficient', 0); },
+    evaluate: (item, { body, state }) => {
+      const wind = vector(item.parameters, 'velocity'), coefficient = number(item.parameters, 'coefficient', 0);
+      return { x: coefficient * (wind.x - state.velocity.x) / body.mass, y: coefficient * (wind.y - state.velocity.y) / body.mass };
+    },
+  },
+  {
+    type: 'radialGravity', label: 'Radiální gravitace', description: 'Přitažlivé gravitační pole se středem a měknutím v okolí singularity.',
+    parameters: [
+      { key: 'centerX', label: 'Střed x', unit: 'm', defaultValue: 0, step: 0.1 },
+      { key: 'centerY', label: 'Střed y', unit: 'm', defaultValue: 0, step: 0.1 },
+      { key: 'strength', label: 'Gravitační parametr', unit: 'm³/s²', defaultValue: 30, min: 0, step: 1 },
+      { key: 'softening', label: 'Měknutí', unit: 'm', defaultValue: 0.5, min: 0.01, step: 0.05 },
+    ],
+    create: id => field(id, 'Radiální gravitace', 'radialGravity', { centerX: 0, centerY: 0, strength: 30, softening: 0.5 }),
+    validate: item => { number(item.parameters, 'centerX'); number(item.parameters, 'centerY'); number(item.parameters, 'strength', 0); number(item.parameters, 'softening', 0.01); },
+    evaluate: (item, { body, state }) => {
+      const dx = number(item.parameters, 'centerX') - state.position.x;
+      const dy = number(item.parameters, 'centerY') - state.position.y;
+      const softening = number(item.parameters, 'softening', 0.01);
+      const radiusSquared = dx * dx + dy * dy + softening * softening;
+      const magnitude = number(item.parameters, 'strength', 0) / (radiusSquared * Math.sqrt(radiusSquared));
+      return { x: dx * magnitude, y: dy * magnitude };
+    },
+  },
 ];
-export function validateField(field:FieldDefinition):void{const item=fieldRegistry.find(p=>p.type===field.type);if(!item)throw new Error(`Neznámý typ pole: ${field.type}`);item.validate(field)}
-export function applyFields(fields:readonly FieldDefinition[],bodies:readonly BodyDefinition[],states:SceneState,engine:PhysicsEngineAdapter):void{for(const field of fields)if(field.enabled){const item=fieldRegistry.find(p=>p.type===field.type);if(item)item.apply(field,bodies,states,engine)}}
+
+export function fieldPlugin(type: string): FieldPlugin | undefined { return fieldRegistry.find(plugin => plugin.type === type); }
+
+export function validateField(item: FieldDefinition): void {
+  const plugin = fieldPlugin(item.type);
+  if (!plugin) throw new Error(`Neznámý typ pole: ${item.type}`);
+  plugin.validate(item);
+}
+
+export function applyFields(fields: readonly FieldDefinition[], bodies: readonly BodyDefinition[], states: SceneState, engine: PhysicsEngineAdapter): void {
+  for (const item of fields) {
+    if (!item.enabled) continue;
+    const plugin = fieldPlugin(item.type);
+    if (!plugin) continue;
+    for (const body of bodies) {
+      if (body.type !== 'dynamic') continue;
+      const state = states[body.id];
+      if (!state) continue;
+      const acceleration = plugin.evaluate(item, { body, state });
+      if (!Number.isFinite(acceleration.x) || !Number.isFinite(acceleration.y)) continue;
+      engine.applyForce(body.id, { x: body.mass * acceleration.x, y: body.mass * acceleration.y });
+    }
+  }
+}
