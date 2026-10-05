@@ -1,7 +1,8 @@
 import type { BodyState, PhysicsDocument, SceneState, SensorDefinition, SensorType } from '../document/types';
+import type { InternalPluginDefinition } from '../plugins/types';
 
 export interface SensorContext { state: BodyState; previous?: BodyState; dt?: number; gravity: { x: number; y: number } }
-export interface SensorPlugin { type: SensorType; label: string; unit: string; read: (context: SensorContext) => number | null }
+export interface SensorPlugin extends Omit<InternalPluginDefinition, 'parameters'> { type: SensorType; unit: string; read: (context: SensorContext) => number | null }
 const kinetic = ({ state: s }: SensorContext) => s.mass === undefined || s.inertia === undefined ? null : (s.mass * (s.velocity.x ** 2 + s.velocity.y ** 2) + s.inertia * s.angularVelocity ** 2) / 2;
 const potential = ({ state: s, gravity: g }: SensorContext) => s.mass === undefined ? null : -s.mass * (g.x * s.position.x + g.y * s.position.y);
 export const sensorRegistry: readonly SensorPlugin[] = [
