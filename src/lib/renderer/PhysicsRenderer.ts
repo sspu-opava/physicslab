@@ -73,9 +73,11 @@ export class PhysicsRenderer {
         for (let y = oy % minor; y < height; y += minor) this.grid.moveTo(0, y).lineTo(width, y);
         this.grid.stroke({ color: '#243640', width: 1, alpha: 0.45 });
       }
-      for (let x = ox % scale; x < width; x += scale) this.grid.moveTo(x, 0).lineTo(x, height);
-      for (let y = oy % scale; y < height; y += scale) this.grid.moveTo(0, y).lineTo(width, y);
-      this.grid.stroke({ color: '#344a56', width: 1, alpha: 0.65 });
+      if (scale >= 5) {
+        for (let x = ox % scale; x < width; x += scale) this.grid.moveTo(x, 0).lineTo(x, height);
+        for (let y = oy % scale; y < height; y += scale) this.grid.moveTo(0, y).lineTo(width, y);
+        this.grid.stroke({ color: '#344a56', width: 1, alpha: 0.65 });
+      }
     }
     this.grid.moveTo(0, oy).lineTo(width, oy).moveTo(ox, 0).lineTo(ox, height).stroke({ color: '#637d8b', width: 1, alpha: 0.55 });
     this.bodies.clear();

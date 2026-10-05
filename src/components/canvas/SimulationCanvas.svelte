@@ -17,6 +17,10 @@
   let grid = $state(true), error = $state(''), zoom = $state(100);
   let visuals=$state<VisualizationOptions>(structuredClone(defaultVisualization));
   let backgroundAsset = $derived(document.assets.find(asset => asset.assetId === document.world.backgroundAssetId));
+  function onToggleMenu(opened: HTMLDetailsElement) {
+    if (!opened.open) return;
+    opened.parentElement?.querySelectorAll(':scope > details').forEach(menu => { if (menu !== opened) (menu as HTMLDetailsElement).open = false; });
+  }
   let ready = $state(false);
   let dragging = false, last = { x: 0, y: 0 }, pointerId: number | undefined;
   let pointerStart = { x: 0, y: 0 }, moved = false;
@@ -75,7 +79,7 @@
 </script>
 <svelte:window onkeydown={e => { if (e.key === 'Escape' && pointerId !== undefined) finish(true); }}/>
 <section class="panel canvas-panel">
-  <div class="canvas-heading"><span>◇ <strong>{document.name}</strong> <small>Pracovní plocha</small></span><div><label><input type="checkbox" bind:checked={grid}/> Mřížka</label><AssetManager {document} disabled={assetsDisabled} add={addAsset} remove={removeAsset} setBackground={setBackgroundAsset}/><details class="visualization-menu"><summary>Vizualizace</summary><div class="visualization-popover">
+  <div class="canvas-heading"><span>◇ <strong>{document.name}</strong> <small>Pracovní plocha</small></span><div><label><input type="checkbox" bind:checked={grid}/> Mřížka</label><AssetManager {document} disabled={assetsDisabled} add={addAsset} remove={removeAsset} setBackground={setBackgroundAsset} {onToggleMenu}/><details class="visualization-menu" ontoggle={event => onToggleMenu(event.currentTarget)}><summary>Vizualizace</summary><div class="visualization-popover">
     <strong>Vektory a značky</strong><label><input type="checkbox" bind:checked={visuals.velocity}/> Rychlost</label><label><input type="checkbox" bind:checked={visuals.acceleration}/> Zrychlení</label><label><input type="checkbox" bind:checked={visuals.gravity}/> Gravitace</label><label><input type="checkbox" bind:checked={visuals.centerOfMass}/> Těžiště</label><label><input type="checkbox" bind:checked={visuals.contacts}/> Kontaktní body</label>
     <label>Časová délka vektoru<input aria-label="Měřítko vektorů" type="range" min="0.05" max="0.8" step="0.05" bind:value={visuals.vectorScale}/> {visuals.vectorScale.toFixed(2)} s</label>
     <strong>Trajektorie</strong><label><input type="checkbox" bind:checked={visuals.trajectory.enabled}/> Stopa pohybu</label><label>Vzorkování [s]<input type="number" min="0.01" max="2" step="0.01" bind:value={visuals.trajectory.sampleInterval}/></label><label>Maximum bodů<input type="number" min="2" max="5000" step="1" bind:value={visuals.trajectory.maxPoints}/></label><label><input type="checkbox" bind:checked={visuals.trajectory.fade}/> Plynulé zeslabení</label><button onclick={() => renderer?.clearTrails()}>Smazat stopy</button>

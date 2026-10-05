@@ -28,8 +28,17 @@ export class AssetManager {
     const prefix = `data:${asset.mimeType};base64,`;
     if (!asset.dataUrl.startsWith(prefix) || !/^[A-Za-z0-9+/]+={0,2}$/.test(asset.dataUrl.slice(prefix.length))) throw new Error(`Asset ${asset.name} neobsahuje platná vložená obrazová data.`);
     const encoded = asset.dataUrl.slice(prefix.length);
+    if (encoded.length % 4 !== 0) throw new Error(`Asset ${asset.name} má neúplná obrazová data.`);
     const decodedBytes = Math.floor(encoded.length * 3 / 4) - (encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0);
-    if (decodedBytes > MAX_ASSET_BYTES || Math.abs(decodedBytes - asset.sizeBytes) > 2) throw new Error(`Asset ${asset.name} má nesouhlasnou velikost obrazových dat.`);
+    if (decodedBytes !== asset.sizeBytes) throw new Error(`Asset ${asset.name} má nesouhlasnou velikost obrazových dat.`);
+    const header = atob(encoded.slice(0, 32));
+    const byte = (index: number) => header.charCodeAt(index);
+    const signatureMatches = asset.mimeType === 'image/png'
+      ? [137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => byte(index) === value)
+      : asset.mimeType === 'image/jpeg' ? byte(0) === 255 && byte(1) === 216 && byte(2) === 255
+      : asset.mimeType === 'image/gif' ? header.startsWith('GIF87a') || header.startsWith('GIF89a')
+      : header.startsWith('RIFF') && header.slice(8, 12) === 'WEBP';
+    if (!signatureMatches) throw new Error(`Asset ${asset.name} neodpovídá deklarovanému formátu obrázku.`);
   }
 
   static add(document: PhysicsDocument, asset: ProjectAsset): PhysicsDocument {

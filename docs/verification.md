@@ -80,3 +80,10 @@ Port 1420 byl na tomto počítači odmítnut chybou EACCES; frontend i Tauri pro
 - Import ověřuje obálku/verzi projektu, limity souboru, tvar těles, parametry modulů a návaznost vazeb, senzorů i měření; před výměnou scény deserializace nejprve dokončí validaci.
 - Nový a načtený projekt vyčistí historii úprav a resetují simulaci. Browser ukládá JSON přes Blob, desktop používá nativní dialogy.
 - AssetManager vloží PNG/JPEG/WebP/GIF do dokumentu jako data URL s ID assetu, ověřeným MIME typem a limitem 8 MiB na soubor; pozadí odkazuje přes `assetId` a jeho odstranění reference vyčistí.
+
+## Revize dosavadních fází (5. 10. 2026)
+
+- Existující testy a nové scénáře projektu: 37 úspěšných testů. `npm run check`, `npm run build` a `cargo check --offline` prošly.
+- Import verze 1 bez assetů zůstává podporovaný; neplatné objekty, barvy, kolizní filtry, geometrie vazeb a neodpovídající obrazová data se odmítnou před výměnou scény.
+- Desktopové ukládání připraví celý soubor vedle cílového projektu a potom ho nahradí. Při chybě přípravy původní projekt zůstane dostupný.
+- V prohlížeči byly zkontrolovány hlavní obrazovka, otevření nabídek, jeden krok simulace a reset. Opravená pravidla CSS drží obsah nabídek viditelný a nabídky se navzájem zavírají.

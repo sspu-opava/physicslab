@@ -2,9 +2,9 @@
   import type { PhysicsDocument, ProjectAsset } from '../../lib/document/types';
   import { AssetManager as AssetLibrary } from '../../lib/document/AssetManager';
 
-  let { document, disabled, add, remove, setBackground }: {
+  let { document, disabled, add, remove, setBackground, onToggleMenu }: {
     document: PhysicsDocument; disabled: boolean; add: (asset: ProjectAsset) => void;
-    remove: (assetId: string) => void; setBackground: (assetId: string | null) => void;
+    remove: (assetId: string) => void; setBackground: (assetId: string | null) => void; onToggleMenu: (menu: HTMLDetailsElement) => void;
   } = $props();
   let picker: HTMLInputElement;
   let error = $state('');
@@ -18,7 +18,7 @@
   }
 </script>
 
-<details class="asset-menu">
+<details class="asset-menu" ontoggle={event => onToggleMenu(event.currentTarget)}>
   <summary>Obrázky <small>{document.assets.length}</small></summary>
   <div class="asset-popover">
     <strong>Assety projektu</strong>

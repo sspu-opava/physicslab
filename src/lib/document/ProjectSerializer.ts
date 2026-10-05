@@ -15,6 +15,7 @@ export interface ProjectFile { format: typeof PROJECT_FORMAT; version: number; d
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 const text = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+const color = (value: unknown): value is string => typeof value === 'string' && /^#[\da-fA-F]{6}$/.test(value);
 function vector(value: unknown, label: string): asserts value is { x: number; y: number } {
   if (!record(value) || !finite(value.x) || !finite(value.y)) throw new Error(`${label} musí obsahovat konečné souřadnice x a y.`);
 }
@@ -22,16 +23,16 @@ function array(value: unknown, label: string): asserts value is unknown[] {
   if (!Array.isArray(value)) throw new Error(`${label} musí být seznam.`);
 }
 function uniqueIds(groups: unknown[][]): void {
-  const ids = groups.flat().map(item => (item as Record<string, unknown>).id);
+  const ids = groups.flat().map(item => record(item) ? item.id : undefined);
   if (ids.some(id => !text(id)) || new Set(ids).size !== ids.length) throw new Error('Všechny objekty musí mít jedinečné neprázdné ID.');
 }
 
 export function validateDocument(value: unknown): PhysicsDocument {
   if (!record(value)) throw new Error('Projekt neobsahuje platný dokument.');
   const doc = value as unknown as PhysicsDocument;
-  if (!text(doc.id) || !text(doc.name) || !Number.isInteger(doc.version) || doc.version < 1) throw new Error('Dokument nemá platné ID, název nebo verzi.');
+  if (!text(doc.id) || !text(doc.name) || doc.version !== 1) throw new Error('Dokument nemá platné ID, název nebo podporovanou verzi.');
   if (!text(doc.createdAt) || !text(doc.modifiedAt)) throw new Error('Dokument nemá platná časová razítka.');
-  if (!record(doc.world) || !finite(doc.world.timeScale) || doc.world.timeScale <= 0 || !finite(doc.world.pixelsPerMeter) || doc.world.pixelsPerMeter <= 0 || !text(doc.world.background) || (doc.world.backgroundAssetId !== null && !text(doc.world.backgroundAssetId))) throw new Error('Dokument obsahuje neplatné nastavení světa.');
+  if (!record(doc.world) || !finite(doc.world.timeScale) || doc.world.timeScale <= 0 || !finite(doc.world.pixelsPerMeter) || doc.world.pixelsPerMeter < 1 || doc.world.pixelsPerMeter > 1000 || !color(doc.world.background) || (doc.world.backgroundAssetId !== null && !text(doc.world.backgroundAssetId))) throw new Error('Dokument obsahuje neplatné nastavení světa.');
   vector(doc.world.gravity, 'Gravitace');
   for (const key of ['bodies', 'joints', 'forces', 'fields', 'assets', 'sensors', 'measurements'] as const) array(doc[key], key);
   uniqueIds([doc.bodies, doc.joints, doc.forces, doc.fields, doc.sensors, doc.measurements]);
@@ -51,15 +52,19 @@ export function validateDocument(value: unknown): PhysicsDocument {
     array(body.fixtures, `Kolize tělesa ${body.name}`);
     if (!body.fixtures.length) throw new Error(`Těleso ${body.name} musí mít alespoň jeden tvar.`);
     for (const fixture of body.fixtures) {
-      if (!record(fixture) || !record(fixture.shape) || !finite(fixture.density) || fixture.density < 0 || !finite(fixture.friction) || fixture.friction < 0 || !finite(fixture.restitution) || fixture.restitution < 0 || fixture.restitution > 1 || !Number.isInteger(fixture.category) || !Number.isInteger(fixture.mask)) throw new Error(`Těleso ${body.name} má neplatné fyzikální vlastnosti.`);
+      if (!record(fixture) || !record(fixture.shape) || !finite(fixture.density) || fixture.density < 0 || !finite(fixture.friction) || fixture.friction < 0 || !finite(fixture.restitution) || fixture.restitution < 0 || fixture.restitution > 1 || !Number.isInteger(fixture.category) || fixture.category < 0 || fixture.category > 65535 || !Number.isInteger(fixture.mask) || fixture.mask < 0 || fixture.mask > 65535) throw new Error(`Těleso ${body.name} má neplatné fyzikální vlastnosti.`);
       if (fixture.shape.type === 'circle') { if (!finite(fixture.shape.radius) || fixture.shape.radius <= 0) throw new Error(`Těleso ${body.name} má neplatný poloměr.`); }
       else if (fixture.shape.type === 'box') { if (!finite(fixture.shape.width) || fixture.shape.width <= 0 || !finite(fixture.shape.height) || fixture.shape.height <= 0) throw new Error(`Těleso ${body.name} má neplatné rozměry.`); }
       else throw new Error(`Těleso ${body.name} používá neznámý tvar.`);
     }
-    if (!record(body.appearance) || !text(body.appearance.fill) || !text(body.appearance.stroke) || !finite(body.appearance.strokeWidth) || body.appearance.strokeWidth < 0 || !finite(body.appearance.opacity) || body.appearance.opacity < 0 || body.appearance.opacity > 1) throw new Error(`Těleso ${body.name} má neplatný vzhled.`);
+    if (body.type === 'dynamic' && !body.fixtures.some(fixture => fixture.density > 0)) throw new Error(`Dynamické těleso ${body.name} potřebuje kladnou hustotu.`);
+    if (!record(body.appearance) || !color(body.appearance.fill) || !color(body.appearance.stroke) || !finite(body.appearance.strokeWidth) || body.appearance.strokeWidth < 0 || !finite(body.appearance.opacity) || body.appearance.opacity < 0 || body.appearance.opacity > 1) throw new Error(`Těleso ${body.name} má neplatný vzhled.`);
   }
   for (const joint of doc.joints) {
     if (!record(joint) || !text(joint.id) || !text(joint.name) || typeof joint.enabled !== 'boolean' || typeof joint.collideConnected !== 'boolean' || !['distance', 'revolute', 'prismatic', 'weld'].includes(joint.type)) throw new Error('Projekt obsahuje neplatnou vazbu.');
+    vector(joint.localAnchorA, `Kotva A vazby ${joint.name}`); vector(joint.localAnchorB, `Kotva B vazby ${joint.name}`);
+    if ((joint.type === 'revolute' || joint.type === 'prismatic') && typeof joint.enableLimit !== 'boolean') throw new Error(`Vazba ${joint.name} má neplatné nastavení mezí.`);
+    if (joint.type === 'prismatic') vector(joint.localAxisA, `Osa vazby ${joint.name}`);
     validateJoint(joint, doc.bodies);
   }
   for (const force of doc.forces) { if (!record(force) || !text(force.id) || !text(force.name) || typeof force.enabled !== 'boolean' || !Array.isArray(force.targetBodyIds) || !record(force.parameters)) throw new Error('Projekt obsahuje neplatnou sílu.'); validateForce(force, doc.bodies); }
@@ -84,7 +89,7 @@ export function migrateProject(value: unknown): PhysicsDocument {
   if (record(project.document)) {
     const legacy = project.document;
     const world = legacy.world;
-    project = { ...project, document: { ...legacy, assets: legacy.assets ?? [], world: record(world) ? { ...world, backgroundAssetId: world.backgroundAssetId ?? null } : world } as PhysicsDocument };
+    project = { ...project, document: { ...legacy, assets: legacy.assets === undefined ? [] : legacy.assets, world: record(world) ? { ...world, backgroundAssetId: world.backgroundAssetId === undefined ? null : world.backgroundAssetId } : world } as PhysicsDocument };
   }
   return validateDocument(project.document);
 }
