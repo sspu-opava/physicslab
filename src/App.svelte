@@ -8,7 +8,7 @@
   import SimulationCanvas from './components/canvas/SimulationCanvas.svelte';
   import Measurements from './components/graphs/Measurements.svelte';
   import { createBody, createDocument } from './lib/document/createDocument';
-  import type { BodyDefinition, JointDefinition, JointType, SceneState, SensorDefinition, SensorType, MeasurementDefinition } from './lib/document/types';
+  import type { BodyDefinition, JointDefinition, JointType, SceneState, SensorDefinition, SensorType, MeasurementDefinition, ForceDefinition, FieldDefinition } from './lib/document/types';
   import { sensorPlugin } from './lib/measurements/SensorRegistry';
   import type { RecordedMeasurement } from './lib/measurements/MeasurementRecorder';
   import { createJoint } from './lib/physics/joints/joints';
@@ -41,6 +41,9 @@
     return measurementAction(() => editor.addMeasurement(sensor, { id: crypto.randomUUID(), sensorId: sensor.id, sampleInterval, maxSamples: 5000 }));
   }
   function updateMeasurement(sensor: SensorDefinition, measurement: MeasurementDefinition): boolean { return measurementAction(() => editor.updateMeasurement(sensor, measurement)); }
+  function updateForce(force: ForceDefinition):boolean { return moduleAction(() => editor.updateForce(force)); }
+  function updateField(field: FieldDefinition):boolean { return moduleAction(() => editor.updateField(field)); }
+  function moduleAction(work:()=>void):boolean { if(status!=='STOPPED'||editing)return false;try{work();notice='';syncEditor();return true}catch(error){notice=String(error instanceof Error?error.message:error);return false} }
   function addJoint(type: JointType, aId: string, bId: string) {
     if (status !== 'STOPPED' || editing) return;
     try {
@@ -123,7 +126,7 @@
     <label>Přichytit <select value={snapInterval} onchange={e => snapInterval = Number(e.currentTarget.value)}>{#each [0, 0.01, 0.05, 0.1, 0.5, 1] as step}<option value={step}>{step === 0 ? 'Vypnuto' : `${step} m`}</option>{/each}</select></label><span>{selection.length} vybráno · Shift: více těles · tažení prázdné plochy: výběr</span>
   </div>
   {#if notice}<div class="app-notice" role="alert">{notice}<button onclick={() => notice = ''} aria-label="Zavřít upozornění">×</button></div>{/if}
-  <main class="workspace"><Library disabled={status !== 'STOPPED' || editing} {add} {document} {selection} {addJoint}/><div class="center-column"><SimulationCanvas {document} state={snapshot} {selection} {select} {tool} {time} {snapInterval} editable={status === 'STOPPED'} {editing} {gesture} selectMany={ids => { editor.selection = ids; selection = [...ids]; }}/><Measurements state={snapshot[selected]} {time} name={body?.name ?? 'Bez výběru'} {document} selectedBodyId={body?.id ?? ''} {series} {readings} disabled={status !== 'STOPPED' || editing} add={addMeasurement} update={updateMeasurement} remove={id => measurementAction(() => editor.removeMeasurement(id))} clear={() => { simulation.clearMeasurements(); sync(); }}/></div><aside class="right-column"><SceneTree {document} {selection} {select}/>{#if joint}<JointInspector {joint} {document} disabled={status !== 'STOPPED' || editing} update={updateJoint}/>{:else}<Inspector {body} state={snapshot[selected]} disabled={status !== 'STOPPED'} {update} beginEdit={() => { if (status === 'STOPPED') editor.beginGesture(); }} endEdit={() => { if (editor.isEditing && !pointerEditing) { editor.endGesture('Změnit vlastnosti'); syncEditor(); } }}/>{/if}</aside></main>
+  <main class="workspace"><Library disabled={status !== 'STOPPED' || editing} {add} {document} {selection} {addJoint} addForce={force=>moduleAction(()=>editor.addForce(force))} {updateForce} removeForce={id=>moduleAction(()=>editor.removeForce(id))} addField={field=>moduleAction(()=>editor.addField(field))} {updateField} removeField={id=>moduleAction(()=>editor.removeField(id))}/><div class="center-column"><SimulationCanvas {document} state={snapshot} {selection} {select} {tool} {time} {snapInterval} editable={status === 'STOPPED'} {editing} {gesture} selectMany={ids => { editor.selection = ids; selection = [...ids]; }}/><Measurements state={snapshot[selected]} {time} name={body?.name ?? 'Bez výběru'} {document} selectedBodyId={body?.id ?? ''} {series} {readings} disabled={status !== 'STOPPED' || editing} add={addMeasurement} update={updateMeasurement} remove={id => measurementAction(() => editor.removeMeasurement(id))} clear={() => { simulation.clearMeasurements(); sync(); }}/></div><aside class="right-column"><SceneTree {document} {selection} {select}/>{#if joint}<JointInspector {joint} {document} disabled={status !== 'STOPPED' || editing} update={updateJoint}/>{:else}<Inspector {body} state={snapshot[selected]} disabled={status !== 'STOPPED'} {update} beginEdit={() => { if (status === 'STOPPED') editor.beginGesture(); }} endEdit={() => { if (editor.isEditing && !pointerEditing) { editor.endGesture('Změnit vlastnosti'); syncEditor(); } }}/>{/if}</aside></main>
   <footer class="statusbar"><span><i class:running={status === 'RUNNING'}></i>{status === 'RUNNING' ? 'Simulace běží' : status === 'PAUSED' ? 'Pozastaveno' : 'Režim úprav'}</span><span>{document.bodies.length} tělesa <b>·</b> {document.joints.length} vazby <b>·</b> Δt = 1/120 s</span><span class="status-tip">Kolečko: přiblížení <b>·</b> Posun: tažení plátna</span><span>+x doprava <b>·</b> +y nahoru</span></footer>
 </div>
 

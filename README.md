@@ -30,6 +30,8 @@ npm run tauri build -- --no-bundle
 - Přichycení přesunu k 0,01 / 0,05 / 0,1 / 0,5 / 1 m; Alt přichycení dočasně vypíná.
 - Duplikace, mazání a Undo/Redo; celé tažení i úprava jednoho pole Inspectoru tvoří jeden příkaz.
 - Čtyři fyzikální vazby: otočný kloub, pevná vzdálenost, posuvný kloub a pevné spojení; tvorba, výběr, vlastnosti a Undo/Redo.
+- Modulární síly: jednorázový impuls, konstantní vektorová síla, lineární odpor a pružina s klidovou délkou, tuhostí a tlumením.
+- Přídavné homogenní gravitační pole a pole větru; jejich vektory, koeficienty, zapnutí i odstranění lze upravit.
 - Inspector pro počáteční polohu, rotaci, hmotnost, tření, restituci, tlumení, rychlost a barvu.
 - Senzory polohy, rychlosti, zrychlení, úhlu, úhlové rychlosti a energií; záznam v simulačním čase.
 - Více křivek v grafu se společnými jednotkami, tabulka hodnot a export CSV/JSON.
@@ -61,9 +63,15 @@ Záznam se vzorkuje po fyzikálních krocích. Interval je v simulačních sekun
 
 Zrychlení je konečná diference rychlostí za jeden fyzikální krok, včetně nárazů; na t = 0 není určeno. Kinetická energie zahrnuje posuv i rotaci podle skutečné hmotnosti a momentu setrvačnosti enginu. Potenciální energie je `−m g·r` pro homogenní gravitaci, s nulou v počátku; mechanická energie nezahrnuje budoucí pružiny či jiná pole. Statická a kinematická tělesa mají v enginu nulovou hmotnost, tedy nulovou energii. Vzorky běhu jsou dočasné a nejsou součástí autorského dokumentu.
 
+## Síly a pole
+
+V knihovně zvolte sílu. Konstantní síla a impuls nabízí složky x/y v N, respektive N·s. Impuls se provede před prvním fyzikálním krokem po Resetu; Pauza a opětovné spuštění další impuls nepřidají. Pružina potřebuje dvě různá dynamická tělesa a parametry klidové délky, tuhosti a tlumení. Lineární odpor se zadává koeficientem kg/s a působí opačně proti rychlosti.
+
+Pole přidáte pod formulářem sil. Gravitační zrychlení se přičítá ke gravitaci světa a působí na všechna dynamická tělesa. Vítr používá rychlost prostředí a koeficient odporu `F = k(v_vítr−v)` na každém dynamickém tělese. Síly i pole můžete vypnout nebo smazat; jejich editace, vytvoření a smazání podporují Undo. Pružina působí pružně v tahu i tlaku.
+
 ## Další etapy
 
-Další fáze: síly a pole, ukládání projektů, experimenty a obecné registry pluginů. Silové a kontaktní senzory potřebují samostatnou vrstvu událostí a sil; zatím nejsou dostupné. Trvalé skupiny, polygonová tělesa, geometrické úchyty na plátně, lanová vazba a motory vazeb zatím nejsou implementované. Konfigurace nyní vytváří desktopový executable s vlastní ikonou, bez instalátoru; distribuce přijde později.
+Další fáze: ukládání projektů, experimenty a obecné registry pluginů. Lanová vazba a další typy polí / sil zatím nejsou implementované. Silové a kontaktní senzory potřebují samostatnou vrstvu událostí. Trvalé skupiny, polygonová tělesa a geometrické úchyty na plátně také čekají na další etapy. Konfigurace nyní vytváří desktopový executable s vlastní ikonou, bez instalátoru; distribuce přijde později.
 
 Viz [architektura](docs/architecture.md).
 

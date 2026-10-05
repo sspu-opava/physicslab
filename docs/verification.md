@@ -50,3 +50,14 @@ Port 1420 byl na tomto počítači odmítnut chybou EACCES; frontend i Tauri pro
 - Definice mají Undo/Redo, odstranění tělesa čistí reference, neplatné intervaly / limity / reference jsou odmítnuty.
 - Export CSV ověřuje escapování názvu, jednotky a počet řádků; JSON zachovává data i chybějící počáteční vzorek zrychlení. Graf pracuje s prázdnými a konstantními daty a při redukci zachová krátkou špičku.
 - Vizuální a interakční kontrola panelu a stažení exportu v prohlížeči nebyly provedeny: nástroj v této relaci vrací prázdný seznam prohlížečů, Chrome ani vestavěný prohlížeč nejsou dostupné. Rust host se neměnil; nativní export nebyl ověřen. Lokální Vite server byl spuštěn na `http://127.0.0.1:5173/` pro ruční kontrolu.
+
+## Fáze 6 — síly a pole (5. 10. 2026)
+
+- `npm run check`: 0 chyb, 0 varování.
+- `npm run build`: úspěšný produkční build; hlavní bundle 570,28 kB (163,22 kB gzip), Vite upozorňuje na doporučené rozdělení velkého bundlu.
+- `git diff --check`: bez chyb whitespace.
+- Kontrola testů v této fázi nebyla provedena.
+- Knihovna nabízí konstantní sílu, jednorázový impuls, lineární odpor a pružinu se dvěma tělesy, klidovou délkou, tuhostí a tlumením. Nastavení parametrů, zapnutí, smazání a historie jsou součástí autorského dokumentu.
+- Gravitační pole přičítá zadané zrychlení ke gravitaci světa; vítr uplatňuje lineární odpor podle relativní rychlosti prostředí.
+- Vizuální kontrolu aplikace nebylo možné provést, protože prohlížečové nástroje nejsou v této relaci dostupné.
+- Editor umožňuje také jednorázový impuls: aplikuje se při prvním simulačním kroku po resetu, opětovné spuštění po pauze ho neopakuje.

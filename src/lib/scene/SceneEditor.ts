@@ -1,6 +1,8 @@
 import type { BodyDefinition, JointDefinition, PhysicsDocument, SensorDefinition, MeasurementDefinition } from '../document/types';
 import { validateSensor } from '../measurements/SensorRegistry';
 import { validateMeasurement } from '../measurements/MeasurementRecorder';
+import { validateForce } from '../physics/modules/ForceRegistry';
+import { validateField } from '../physics/modules/FieldRegistry';
 import { validateJoint } from '../physics/joints/joints';
 import { CommandHistory, DocumentCommand } from '../history/CommandHistory';
 
@@ -25,6 +27,7 @@ export class SceneEditor {
   updateBody(body: BodyDefinition): void {
     const bodies = this.document.bodies.map(value => value.id === body.id ? structuredClone(body) : value);
     for (const joint of this.document.joints) validateJoint(joint, bodies);
+    for (const force of this.document.forces) validateForce(force,bodies);
     if (this.isEditing) this.document = { ...this.document, bodies };
     else if (JSON.stringify(bodies) !== JSON.stringify(this.document.bodies)) this.commit('Změnit vlastnosti', { ...this.document, bodies });
   }
@@ -55,6 +58,12 @@ export class SceneEditor {
     const sensors = this.document.sensors.filter(s => s.id !== sensorId || measurements.some(m => m.sensorId === s.id));
     this.commit('Smazat měření', { ...this.document, measurements, sensors });
   }
+  addForce(force: PhysicsDocument['forces'][number]): void { validateForce(force,this.document.bodies); if(this.document.forces.some(f=>f.id===force.id))throw new Error('ID síly už existuje.'); this.commit('Přidat sílu',{...this.document,forces:[...this.document.forces,force]}); }
+  updateForce(force: PhysicsDocument['forces'][number]): void { validateForce(force,this.document.bodies); if(!this.document.forces.some(f=>f.id===force.id))throw new Error('Síla neexistuje.'); this.commit('Změnit sílu',{...this.document,forces:this.document.forces.map(f=>f.id===force.id?structuredClone(force):f)}); }
+  removeForce(id:string):void{const forces=this.document.forces.filter(f=>f.id!==id);if(forces.length!==this.document.forces.length)this.commit('Smazat sílu',{...this.document,forces})}
+  addField(field: PhysicsDocument['fields'][number]):void{validateField(field);if(this.document.fields.some(f=>f.id===field.id))throw new Error('ID pole už existuje.');this.commit('Přidat pole',{...this.document,fields:[...this.document.fields,field]})}
+  updateField(field: PhysicsDocument['fields'][number]):void{validateField(field);if(!this.document.fields.some(f=>f.id===field.id))throw new Error('Pole neexistuje.');this.commit('Změnit pole',{...this.document,fields:this.document.fields.map(f=>f.id===field.id?structuredClone(field):f)})}
+  removeField(id:string):void{const fields=this.document.fields.filter(f=>f.id!==id);if(fields.length!==this.document.fields.length)this.commit('Smazat pole',{...this.document,fields})}
   updateJoint(joint: JointDefinition): void {
     validateJoint(joint, this.document.bodies);
     const joints = this.document.joints.map(value => value.id === joint.id ? structuredClone(joint) : value);
@@ -69,7 +78,7 @@ export class SceneEditor {
     this.commit('Smazat tělesa', { ...this.document,
       bodies: this.document.bodies.filter(body => !ids.has(body.id)),
       joints: this.document.joints.filter(joint => !ids.has(joint.id) && !ids.has(joint.bodyAId) && !ids.has(joint.bodyBId)),
-      forces: this.document.forces.map(force => ({ ...force, targetBodyIds: force.targetBodyIds.filter(id => !ids.has(id)) })),
+      forces: this.document.forces.map(force => ({ ...force, targetBodyIds: force.targetBodyIds.filter(id => !ids.has(id)) })).filter(force => (force.type === 'spring' ? force.targetBodyIds.length === 2 : force.targetBodyIds.length > 0) && force.targetBodyIds.some(id => this.document.bodies.find(body=>body.id===id)?.type==='dynamic')),
       sensors, measurements: this.document.measurements.filter(measurement => sensorIds.has(measurement.sensorId)) });
   }
   duplicateSelected(makeId: () => string = () => crypto.randomUUID()): void {

@@ -10,7 +10,7 @@ export interface BodyDefinition {
   fixtures: FixtureDefinition[];
   appearance: { fill: string; stroke: string; strokeWidth: number; opacity: number };
 }
-export interface ModuleDefinition { id: string; type: string; enabled: boolean; parameters: Record<string, unknown> }
+export interface ModuleDefinition { id: string; name?: string; type: string; enabled: boolean; parameters: Record<string, unknown> }
 export type JointType = 'revolute' | 'distance' | 'prismatic' | 'weld';
 interface JointBase {
   id: string; name: string; enabled: boolean; bodyAId: string; bodyBId: string;
@@ -23,12 +23,13 @@ export type JointDefinition = JointBase & (
   { type: 'weld'; referenceAngle: number }
 );
 export interface ForceDefinition extends ModuleDefinition { targetBodyIds: string[] }
+export interface FieldDefinition extends ModuleDefinition {}
 export type SensorType = 'x' | 'y' | 'vx' | 'vy' | 'speed' | 'ax' | 'ay' | 'angle' | 'angularVelocity' | 'kinetic' | 'potential' | 'energy';
 export interface SensorDefinition { id: string; name: string; type: SensorType; enabled: boolean; bodyId: string }
 export interface MeasurementDefinition { id: string; sensorId: string; sampleInterval: number; maxSamples?: number }
 export interface PhysicsDocument {
   id: string; name: string; version: number; world: WorldDefinition; bodies: BodyDefinition[];
-  joints: JointDefinition[]; forces: ForceDefinition[]; fields: ModuleDefinition[];
+  joints: JointDefinition[]; forces: ForceDefinition[]; fields: FieldDefinition[];
   sensors: SensorDefinition[]; measurements: MeasurementDefinition[]; createdAt: string; modifiedAt: string;
 }
 export interface BodyState { position: Vector2; angle: number; velocity: Vector2; angularVelocity: number; mass?: number; inertia?: number }

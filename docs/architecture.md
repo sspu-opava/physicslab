@@ -56,6 +56,14 @@ Nenásobné intervaly používají první fyzikální krok po plánovaném čase
 
 `Measurements` a `MeasurementSetup` zobrazují aktuální hodnoty, konfiguraci a SVG graf. Křivky se seskupují podle jednotek a lze je skrývat. `graph.ts` redukuje zobrazené body po blocích se zachováním extrémů; export vždy používá všechny dosud uchované vzorky. CSV je dlouhá tabulka ID měření, ID senzoru, názvu, jednotky, času a hodnoty; JSON zachovává samostatné řady a počet vypuštěných vzorků. Export přes Blob nemění model a nepotřebuje nový Rust příkaz. Desktopový dialog a trvalé ukládání přijdou v další fázi.
 
+## Síly a pole (fáze 6)
+
+`physics/modules/ForceRegistry.ts` obsahuje deklarativní katalog a samostatnou validaci / aplikaci modulů. Jednorázový impuls se aplikuje před prvním simulačním krokem po Reset / změně scény; Pause/Play jej neopakuje. Konstantní síla zadává složky v N pro vybrané těleso, lineární odpor používá `F = −k v` (k v kg/s) a pružina mezi dvěma tělesy používá `F = k(d−L₀) + c v_rel` po spojnici, včetně opačné síly na druhé těleso. Pružina může působit v tahu i tlaku; oba cíle musí být odlišná ID, alespoň jeden dynamický. Statická tělesa sílu nepřijmou.
+
+`FieldRegistry.ts` přidává vektorové gravitační zrychlení k World gravity a homogenní vítr `F = k (v_wind−v)` na všech dynamických tělesech. Každý krok SimulationCore vyhodnotí právě přítomné a zapnuté síly/pole ze snapshotu před krokem adaptéru; konstantní síla je tedy spojitá, nikoli impuls. Moduly zůstávají typovanými sériovými záznamy v dokumentu a neodkazují na objekty enginu. Validace probíhá před vložením do historie. Smazání tělesa odstraní neúplnou pružinu a sílu bez cíle; změna tělesa na statické je odmítnuta, pokud by síla ztratila všechny dynamické cíle.
+
+`ForceLab` v knihovně nabízí vytvoření, parametrizaci, zapnutí a smazání sil a polí. Úprava autorského dokumentu obnoví simulaci, běh jej nikdy nepřepisuje. Pole je globální a působí na všechna dynamická tělesa. Směrová lokální pole, jednorázový impuls, force sensors a vizualizace vektorů čekají na samostatnou etapu.
+
 ## Ověření
 
 `npm run check`, `npm test`, `npm run build`. Testy ověřují převod os a zoomu, nezávislost kroku na FPS, volný pád, kontakt s podlahou, impuls v SI, pause/reset, editor a historii, omezení všech čtyř vazeb a neměnnost počátečního dokumentu.
