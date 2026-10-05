@@ -4,14 +4,16 @@
   import { exportMeasurements, type RecordedMeasurement } from '../../lib/measurements/MeasurementRecorder';
   import { graphData, curveColors } from '../../lib/measurements/graph';
   import MeasurementSetup from './MeasurementSetup.svelte';
-  let { state: bodyState, time, name, document, selectedBodyId, series, readings, disabled, add, update, remove, clear }: {
+  import PhysicsGraphPanel from './PhysicsGraphPanel.svelte';
+  import type { PhysicsGraphDefinition } from '../../lib/graph/types';
+  let { state: bodyState, time, name, document, selectedBodyId, series, readings, graphValues, disabled, add, update, remove, clear, updatePhysicsGraph }: {
     state?: BodyState; time: number; name: string; document: PhysicsDocument; selectedBodyId: string;
-    series: RecordedMeasurement[]; readings: Record<string, number | null>; disabled: boolean;
+    series: RecordedMeasurement[]; readings: Record<string, number | null>; graphValues: Record<string, number | null>; disabled: boolean;
     add: (bodyId: string, type: SensorType, interval: number) => boolean;
     update: (sensor: SensorDefinition, measurement: MeasurementDefinition) => boolean;
-    remove: (id: string) => void; clear: () => void;
+    remove: (id: string) => void; clear: () => void; updatePhysicsGraph: (graph: PhysicsGraphDefinition) => boolean;
   } = $props();
-  let tab = $state<'values' | 'graph' | 'setup'>('values'), unit = $state('m'), hidden = $state<string[]>([]);
+  let tab = $state<'values' | 'graph' | 'setup' | 'physics-graph'>('values'), unit = $state('m'), hidden = $state<string[]>([]);
   let units = $derived([...new Set(series.map(s => s.unit))]);
   let activeUnit = $derived(units.includes(unit) ? unit : units[0] ?? 'm');
   let visible = $derived(series.filter(s => s.unit === activeUnit && !hidden.includes(s.id)));
@@ -27,6 +29,7 @@
     <button class:active={tab === 'values'} onclick={() => tab = 'values'}>Hodnoty</button>
     <button class:active={tab === 'graph'} onclick={() => tab = 'graph'}>Grafy</button>
     <button class:active={tab === 'setup'} onclick={() => tab = 'setup'}>Senzory a záznam</button>
+    <button class:active={tab === 'physics-graph'} onclick={() => tab = 'physics-graph'}>Physics Graph</button>
     <span class="measurement-note">t = {time.toFixed(3)} s</span>
     <button disabled={!series.some(s => s.values.length)} onclick={() => download('csv')}>CSV</button>
     <button disabled={!series.some(s => s.values.length)} onclick={() => download('json')}>JSON</button>
@@ -38,6 +41,8 @@
     {#if document.sensors.length}<table class="sensor-values"><thead><tr><th>Senzor</th><th>Hodnota</th><th>Jednotka</th></tr></thead><tbody>{#each document.sensors as sensor}<tr><td>{sensor.name}</td><td>{readings[sensor.id]?.toFixed(3) ?? '—'}</td><td>{sensorPlugin(sensor.type).unit}</td></tr>{/each}</tbody></table>{/if}
   {:else if tab === 'setup'}
     <MeasurementSetup {document} {selectedBodyId} {disabled} {add} {update} {remove}/>
+  {:else if tab === 'physics-graph'}
+    <PhysicsGraphPanel {document} {readings} values={graphValues} {disabled} update={updatePhysicsGraph}/>
   {:else}
     {#if series.length}<div class="graph-controls"><label>Jednotka grafu<select value={activeUnit} onchange={e => unit = e.currentTarget.value}>{#each units as u}<option value={u}>{u}</option>{/each}</select></label>{#each series.filter(s => s.unit === activeUnit) as s}<label style={`--curve:${curveColors[series.indexOf(s) % curveColors.length]}`}><input type="checkbox" checked={!hidden.includes(s.id)} onchange={e => hidden = e.currentTarget.checked ? hidden.filter(id => id !== s.id) : [...hidden, s.id]}/><span class="curve-dot"></span>{s.name}</label>{/each}</div>{/if}
     {#if plot}<svg class="measurement-graph" viewBox="0 0 800 185" role="img" aria-label={`Časový graf měření v ${activeUnit}`}>

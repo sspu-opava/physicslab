@@ -1,4 +1,5 @@
 import type { BodyDefinition, PhysicsDocument } from './types';
+import { emptyPhysicsGraph } from '../graph/types';
 export function createBody(id: string, shape: 'circle' | 'box', position = { x: 0, y: 4 }): BodyDefinition {
   return { id, name: shape === 'circle' ? 'Koule' : 'Obdélník', type: 'dynamic', position, angle: 0, mass: 1,
     initialVelocity: { x: 0, y: 0 }, initialAngularVelocity: 0, linearDamping: 0, angularDamping: 0.01,
@@ -12,5 +13,5 @@ export function createDocument(empty = false): PhysicsDocument {
   ground.appearance = { fill: '#667782', stroke: '#a5b2b9', strokeWidth: 1, opacity: 1 };
   return { id: 'free-fall', name: 'Volný pád', version: 1,
     world: { gravity: { x: 0, y: -9.81 }, timeScale: 1, pixelsPerMeter: 100, background: '#101e28', backgroundAssetId: null },
-    bodies: empty ? [] : [ground, createBody('ball', 'circle')], joints: [], forces: [], fields: [], assets: [], sensors: [], measurements: [], createdAt: now, modifiedAt: now };
+    bodies: empty ? [] : [ground, createBody('ball', 'circle')], joints: [], forces: [], fields: [], assets: [], sensors: [], measurements: [], physicsGraph: emptyPhysicsGraph(), createdAt: now, modifiedAt: now };
 }

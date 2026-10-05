@@ -5,6 +5,8 @@ import { validateForce } from '../physics/modules/ForceRegistry';
 import { validateField } from '../physics/modules/FieldRegistry';
 import { validateMeasurement } from '../measurements/MeasurementRecorder';
 import { validateSensor } from '../measurements/SensorRegistry';
+import { emptyPhysicsGraph } from '../graph/types';
+import { validatePhysicsGraph } from '../graph/PhysicsGraph';
 
 export const PROJECT_FORMAT = 'physicslab' as const;
 export const PROJECT_VERSION = 1;
@@ -71,6 +73,7 @@ export function validateDocument(value: unknown): PhysicsDocument {
   for (const field of doc.fields) { if (!record(field) || !text(field.id) || !text(field.name) || typeof field.enabled !== 'boolean' || !record(field.parameters)) throw new Error('Projekt obsahuje neplatné pole.'); validateField(field); }
   for (const sensor of doc.sensors) { if (!record(sensor) || !text(sensor.id) || !text(sensor.name) || typeof sensor.enabled !== 'boolean') throw new Error('Projekt obsahuje neplatný senzor.'); validateSensor(sensor, doc); }
   for (const measurement of doc.measurements) { if (!record(measurement) || !text(measurement.id)) throw new Error('Projekt obsahuje neplatné měření.'); validateMeasurement(measurement, doc); }
+  validatePhysicsGraph(doc.physicsGraph, doc.sensors, doc.bodies);
   return structuredClone(doc);
 }
 
@@ -89,7 +92,7 @@ export function migrateProject(value: unknown): PhysicsDocument {
   if (record(project.document)) {
     const legacy = project.document;
     const world = legacy.world;
-    project = { ...project, document: { ...legacy, assets: legacy.assets === undefined ? [] : legacy.assets, world: record(world) ? { ...world, backgroundAssetId: world.backgroundAssetId === undefined ? null : world.backgroundAssetId } : world } as PhysicsDocument };
+    project = { ...project, document: { ...legacy, assets: legacy.assets === undefined ? [] : legacy.assets, physicsGraph: legacy.physicsGraph === undefined ? emptyPhysicsGraph() : legacy.physicsGraph, world: record(world) ? { ...world, backgroundAssetId: world.backgroundAssetId === undefined ? null : world.backgroundAssetId } : world } as PhysicsDocument };
   }
   return validateDocument(project.document);
 }

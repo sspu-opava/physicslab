@@ -6,6 +6,8 @@ import { validateForce } from '../physics/modules/ForceRegistry';
 import { validateField } from '../physics/modules/FieldRegistry';
 import { validateJoint } from '../physics/joints/joints';
 import { CommandHistory, DocumentCommand } from '../history/CommandHistory';
+import type { PhysicsGraphDefinition } from '../graph/types';
+import { validatePhysicsGraph } from '../graph/PhysicsGraph';
 
 export class SceneEditor {
   readonly history = new CommandHistory();
@@ -33,6 +35,7 @@ export class SceneEditor {
     const bodies = this.document.bodies.map(value => value.id === body.id ? structuredClone(body) : value);
     for (const joint of this.document.joints) validateJoint(joint, bodies);
     for (const force of this.document.forces) validateForce(force,bodies);
+    validatePhysicsGraph(this.document.physicsGraph, this.document.sensors, bodies);
     if (this.isEditing) this.document = { ...this.document, bodies };
     else if (JSON.stringify(bodies) !== JSON.stringify(this.document.bodies)) this.commit('Změnit vlastnosti', { ...this.document, bodies });
   }
@@ -61,7 +64,11 @@ export class SceneEditor {
     const measurements = this.document.measurements.filter(m => m.id !== id), sensorId = this.document.measurements.find(m => m.id === id)?.sensorId;
     if (!sensorId) return;
     const sensors = this.document.sensors.filter(s => s.id !== sensorId || measurements.some(m => m.sensorId === s.id));
-    this.commit('Smazat měření', { ...this.document, measurements, sensors });
+    const removedSensors = new Set(this.document.sensors.filter(sensor => !sensors.some(next => next.id === sensor.id)).map(sensor => sensor.id));
+    const nodes = this.document.physicsGraph.nodes.filter(node => node.type !== 'sensor' || !removedSensors.has(node.sensorId));
+    const nodeIds = new Set(nodes.map(node => node.id));
+    const physicsGraph = { nodes, connections: this.document.physicsGraph.connections.filter(edge => nodeIds.has(edge.fromNodeId) && nodeIds.has(edge.toNodeId)) };
+    this.commit('Smazat měření', { ...this.document, measurements, sensors, physicsGraph });
   }
   addForce(force: PhysicsDocument['forces'][number]): void { validateForce(force,this.document.bodies); if(this.document.forces.some(f=>f.id===force.id))throw new Error('ID síly už existuje.'); this.commit('Přidat sílu',{...this.document,forces:[...this.document.forces,force]}); }
   updateForce(force: PhysicsDocument['forces'][number]): void { validateForce(force,this.document.bodies); if(!this.document.forces.some(f=>f.id===force.id))throw new Error('Síla neexistuje.'); this.commit('Změnit sílu',{...this.document,forces:this.document.forces.map(f=>f.id===force.id?structuredClone(force):f)}); }
@@ -69,6 +76,10 @@ export class SceneEditor {
   addField(field: PhysicsDocument['fields'][number]):void{validateField(field);if(this.document.fields.some(f=>f.id===field.id))throw new Error('ID pole už existuje.');this.commit('Přidat pole',{...this.document,fields:[...this.document.fields,field]})}
   updateField(field: PhysicsDocument['fields'][number]):void{validateField(field);if(!this.document.fields.some(f=>f.id===field.id))throw new Error('Pole neexistuje.');this.commit('Změnit pole',{...this.document,fields:this.document.fields.map(f=>f.id===field.id?structuredClone(field):f)})}
   removeField(id:string):void{const fields=this.document.fields.filter(f=>f.id!==id);if(fields.length!==this.document.fields.length)this.commit('Smazat pole',{...this.document,fields})}
+  updatePhysicsGraph(graph: PhysicsGraphDefinition): void {
+    validatePhysicsGraph(graph, this.document.sensors, this.document.bodies);
+    if (JSON.stringify(graph) !== JSON.stringify(this.document.physicsGraph)) this.commit('Upravit fyzikální graf', { ...this.document, physicsGraph: structuredClone(graph) });
+  }
   addAsset(asset: ProjectAsset): void { this.commit('Přidat asset', AssetManager.add(this.document, asset)); }
   removeAsset(assetId: string): void { const next = AssetManager.remove(this.document, assetId); if (next !== this.document) this.commit('Odebrat asset', next); }
   setBackgroundAsset(assetId: string | null): void {
@@ -87,11 +98,14 @@ export class SceneEditor {
     const ids = new Set(this.selection);
     const sensors = this.document.sensors.filter(sensor => !ids.has(sensor.bodyId));
     const sensorIds = new Set(sensors.map(sensor => sensor.id));
+    const graphNodes = this.document.physicsGraph.nodes.filter(node => node.type !== 'force' || !ids.has(node.bodyId)).filter(node => node.type !== 'sensor' || sensorIds.has(node.sensorId));
+    const graphNodeIds = new Set(graphNodes.map(node => node.id));
+    const physicsGraph = { nodes: graphNodes, connections: this.document.physicsGraph.connections.filter(edge => graphNodeIds.has(edge.fromNodeId) && graphNodeIds.has(edge.toNodeId)) };
     this.commit('Smazat tělesa', { ...this.document,
       bodies: this.document.bodies.filter(body => !ids.has(body.id)),
       joints: this.document.joints.filter(joint => !ids.has(joint.id) && !ids.has(joint.bodyAId) && !ids.has(joint.bodyBId)),
       forces: this.document.forces.map(force => ({ ...force, targetBodyIds: force.targetBodyIds.filter(id => !ids.has(id)) })).filter(force => (force.type === 'spring' ? force.targetBodyIds.length === 2 : force.targetBodyIds.length > 0) && force.targetBodyIds.some(id => this.document.bodies.find(body=>body.id===id)?.type==='dynamic')),
-      sensors, measurements: this.document.measurements.filter(measurement => sensorIds.has(measurement.sensorId)) });
+      sensors, measurements: this.document.measurements.filter(measurement => sensorIds.has(measurement.sensorId)), physicsGraph });
   }
   duplicateSelected(makeId: () => string = () => crypto.randomUUID()): void {
     if (!this.selection.length || this.isEditing) return;
