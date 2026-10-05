@@ -81,7 +81,7 @@ export function validateField(item: FieldDefinition): void {
   plugin.validate(item);
 }
 
-export function applyFields(fields: readonly FieldDefinition[], bodies: readonly BodyDefinition[], states: SceneState, engine: PhysicsEngineAdapter): void {
+export function applyFields(fields: readonly FieldDefinition[], bodies: readonly BodyDefinition[], states: SceneState, engine: PhysicsEngineAdapter, onError?: (message: string) => void): void {
   for (const item of fields) {
     if (!item.enabled) continue;
     const plugin = fieldPlugin(item.type);
@@ -90,9 +90,15 @@ export function applyFields(fields: readonly FieldDefinition[], bodies: readonly
       if (body.type !== 'dynamic') continue;
       const state = states[body.id];
       if (!state) continue;
-      const acceleration = plugin.evaluate(item, { body, state });
-      if (!Number.isFinite(acceleration.x) || !Number.isFinite(acceleration.y)) continue;
-      engine.applyForce(body.id, { x: body.mass * acceleration.x, y: body.mass * acceleration.y });
+      let acceleration: Vector2;
+      try { acceleration = plugin.evaluate(item, { body, state }); }
+      catch(error) { onError?.(`Pole ${item.name ?? item.type} (${body.name}): ${error instanceof Error ? error.message : String(error)}`); continue; }
+      if (!Number.isFinite(acceleration.x) || !Number.isFinite(acceleration.y)) {
+        onError?.(`Pole ${item.name ?? item.type} (${body.name}) vrátilo neplatné zrychlení.`);
+        continue;
+      }
+      try { engine.applyForce(body.id, { x: body.mass * acceleration.x, y: body.mass * acceleration.y }); }
+      catch(error) { onError?.(`Pole ${item.name ?? item.type} (${body.name}): ${error instanceof Error ? error.message : String(error)}`); }
     }
   }
 }

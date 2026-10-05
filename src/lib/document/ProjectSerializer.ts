@@ -29,6 +29,11 @@ function uniqueIds(groups: unknown[][]): void {
   if (ids.some(id => !text(id)) || new Set(ids).size !== ids.length) throw new Error('Všechny objekty musí mít jedinečné neprázdné ID.');
 }
 
+function migratePhysicsGraph(value: unknown): unknown {
+  if (!record(value) || !Array.isArray(value.nodes)) return value;
+  return { ...value, nodes: value.nodes.map(node => record(node) && node.type === 'constant' && node.unit === undefined ? { ...node, unit: '1' } : node) };
+}
+
 export function validateDocument(value: unknown): PhysicsDocument {
   if (!record(value)) throw new Error('Projekt neobsahuje platný dokument.');
   const doc = value as unknown as PhysicsDocument;
@@ -92,7 +97,7 @@ export function migrateProject(value: unknown): PhysicsDocument {
   if (record(project.document)) {
     const legacy = project.document;
     const world = legacy.world;
-    project = { ...project, document: { ...legacy, assets: legacy.assets === undefined ? [] : legacy.assets, physicsGraph: legacy.physicsGraph === undefined ? emptyPhysicsGraph() : legacy.physicsGraph, world: record(world) ? { ...world, backgroundAssetId: world.backgroundAssetId === undefined ? null : world.backgroundAssetId } : world } as PhysicsDocument };
+    project = { ...project, document: { ...legacy, assets: legacy.assets === undefined ? [] : legacy.assets, physicsGraph: legacy.physicsGraph === undefined ? emptyPhysicsGraph() : migratePhysicsGraph(legacy.physicsGraph), world: record(world) ? { ...world, backgroundAssetId: world.backgroundAssetId === undefined ? null : world.backgroundAssetId } : world } as PhysicsDocument };
   }
   return validateDocument(project.document);
 }

@@ -15,6 +15,7 @@ export class SimulationCore {
   readings: Record<string, number | null> = {};
   graphMeasurements: Record<string, number | null> = {};
   graphValues: Record<string, number | null> = {};
+  diagnostics: string[] = [];
   contactPoints: {x:number;y:number}[] = [];
   readonly recorder = new MeasurementRecorder();
   private impulsesApplied = false;
@@ -27,23 +28,31 @@ export class SimulationCore {
     this.current = this.snapshot(); this.previous = this.current;
     this.contactPoints=[];
     for(const body of this.document.bodies)if(this.current[body.id])this.current[body.id].acceleration={...this.document.world.gravity};
-    this.readings = readSensors(this.document, this.current);
+    this.diagnostics = [];
+    this.readings = readSensors(this.document, this.current, undefined, undefined, message => this.diagnostics.push(message));
     const graph = evaluatePhysicsGraph(this.document.physicsGraph, this.readings);
     this.graphMeasurements = graph.measurements; this.graphValues = graph.values;
+    this.diagnostics.push(...graph.diagnostics);
     this.recorder.reset(this.document); this.recorder.addGraphMeasurements(this.document.physicsGraph.nodes); this.recorder.sample(0, this.readings); this.recorder.sampleGraph(0, this.graphMeasurements);
   }
   private snapshot(): SceneState { return Object.fromEntries(this.document.bodies.map(b => [b.id, this.adapter.getBodyState(b.id)])); }
   private step = (dt: number): void => {
-    if(!this.impulsesApplied){applyForces(this.document.forces,this.document.bodies,this.current,this.adapter,true);this.impulsesApplied=true;}
-    applyForces(this.document.forces,this.document.bodies,this.current,this.adapter);
-    applyFields(this.document.fields,this.document.bodies,this.current,this.adapter);
-    for (const force of evaluatePhysicsGraph(this.document.physicsGraph, this.readings).forces) this.adapter.applyForce(force.bodyId, { x: force.x, y: force.y });
+    const diagnostics: string[] = [];
+    if(!this.impulsesApplied){applyForces(this.document.forces,this.document.bodies,this.current,this.adapter,true,message=>diagnostics.push(message));this.impulsesApplied=true;}
+    applyForces(this.document.forces,this.document.bodies,this.current,this.adapter,false,message=>diagnostics.push(message));
+    applyFields(this.document.fields,this.document.bodies,this.current,this.adapter,message=>diagnostics.push(message));
+    const beforeStepGraph = evaluatePhysicsGraph(this.document.physicsGraph, this.readings);
+    diagnostics.push(...beforeStepGraph.diagnostics);
+    for (const force of beforeStepGraph.forces) try { this.adapter.applyForce(force.bodyId, { x: force.x, y: force.y }); }
+    catch(error) { diagnostics.push(`Výstup síly grafu (${force.bodyId}): ${error instanceof Error ? error.message : String(error)}`); }
     this.previous = this.current; this.adapter.step(dt); this.current = this.snapshot();
     for(const body of this.document.bodies){const now=this.current[body.id],before=this.previous[body.id];if(now&&before)now.acceleration={x:(now.velocity.x-before.velocity.x)/dt,y:(now.velocity.y-before.velocity.y)/dt}}
     this.contactPoints=this.adapter.getContactPoints();
-    this.readings = readSensors(this.document, this.current, this.previous, dt);
+    this.readings = readSensors(this.document, this.current, this.previous, dt, message => diagnostics.push(message));
     const graph = evaluatePhysicsGraph(this.document.physicsGraph, this.readings);
     this.graphMeasurements = graph.measurements; this.graphValues = graph.values;
+    diagnostics.push(...graph.diagnostics);
+    this.diagnostics = [...new Set(diagnostics)];
     this.recorder.sample(this.clock.time + dt, this.readings);
     this.recorder.sampleGraph(this.clock.time + dt, this.graphMeasurements);
   };

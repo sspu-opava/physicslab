@@ -36,6 +36,6 @@ export const forceRegistry: readonly ForcePlugin[] = [
     } }
 ];
 export function validateForce(force: ForceDefinition, bodies: readonly BodyDefinition[]): void { const item=plugin(force.type); if(!item) throw new Error(`Neznámý typ síly: ${force.type}`); item.validate(force,bodies); }
-export function applyForces(forces: readonly ForceDefinition[], bodies: readonly BodyDefinition[], states: SceneState, engine: PhysicsEngineAdapter, once=false): void {
-  for(const force of forces) if(force.enabled) { const item=plugin(force.type); if(item&&!!item.once===once) item.apply(force,bodies,states,engine); }
+export function applyForces(forces: readonly ForceDefinition[], bodies: readonly BodyDefinition[], states: SceneState, engine: PhysicsEngineAdapter, once=false, onError?: (message: string) => void): void {
+  for(const force of forces) if(force.enabled) { const item=plugin(force.type); if(item&&!!item.once===once) try { item.apply(force,bodies,states,engine); } catch(error) { onError?.(`Síla ${force.name ?? force.type}: ${error instanceof Error ? error.message : String(error)}`); } }
 }

@@ -6,9 +6,9 @@
   import MeasurementSetup from './MeasurementSetup.svelte';
   import PhysicsGraphPanel from './PhysicsGraphPanel.svelte';
   import type { PhysicsGraphDefinition } from '../../lib/graph/types';
-  let { state: bodyState, time, name, document, selectedBodyId, series, readings, graphValues, disabled, add, update, remove, clear, updatePhysicsGraph }: {
+  let { state: bodyState, time, name, document, selectedBodyId, series, readings, graphValues, diagnostics, disabled, add, update, remove, clear, updatePhysicsGraph }: {
     state?: BodyState; time: number; name: string; document: PhysicsDocument; selectedBodyId: string;
-    series: RecordedMeasurement[]; readings: Record<string, number | null>; graphValues: Record<string, number | null>; disabled: boolean;
+    series: RecordedMeasurement[]; readings: Record<string, number | null>; graphValues: Record<string, number | null>; diagnostics: string[]; disabled: boolean;
     add: (bodyId: string, type: SensorType, interval: number) => boolean;
     update: (sensor: SensorDefinition, measurement: MeasurementDefinition) => boolean;
     remove: (id: string) => void; clear: () => void; updatePhysicsGraph: (graph: PhysicsGraphDefinition) => boolean;
@@ -42,7 +42,7 @@
   {:else if tab === 'setup'}
     <MeasurementSetup {document} {selectedBodyId} {disabled} {add} {update} {remove}/>
   {:else if tab === 'physics-graph'}
-    <PhysicsGraphPanel {document} {readings} values={graphValues} {disabled} update={updatePhysicsGraph}/>
+    <PhysicsGraphPanel {document} {readings} values={graphValues} {diagnostics} {disabled} update={updatePhysicsGraph}/>
   {:else}
     {#if series.length}<div class="graph-controls"><label>Jednotka grafu<select value={activeUnit} onchange={e => unit = e.currentTarget.value}>{#each units as u}<option value={u}>{u}</option>{/each}</select></label>{#each series.filter(s => s.unit === activeUnit) as s}<label style={`--curve:${curveColors[series.indexOf(s) % curveColors.length]}`}><input type="checkbox" checked={!hidden.includes(s.id)} onchange={e => hidden = e.currentTarget.checked ? hidden.filter(id => id !== s.id) : [...hidden, s.id]}/><span class="curve-dot"></span>{s.name}</label>{/each}</div>{/if}
     {#if plot}<svg class="measurement-graph" viewBox="0 0 800 185" role="img" aria-label={`Časový graf měření v ${activeUnit}`}>

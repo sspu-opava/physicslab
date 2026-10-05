@@ -24,10 +24,12 @@ export function validateSensor(sensor: SensorDefinition, document: PhysicsDocume
   if (!document.bodies.some(b => b.id === sensor.bodyId)) throw new Error('Vyberte existující těleso senzoru.');
   if (!sensor.name.trim()) throw new Error('Zadejte název senzoru.');
 }
-export function readSensors(document: PhysicsDocument, state: SceneState, previous?: SceneState, dt?: number): Record<string, number | null> {
+export function readSensors(document: PhysicsDocument, state: SceneState, previous?: SceneState, dt?: number, onError?: (message: string) => void): Record<string, number | null> {
   return Object.fromEntries(document.sensors.map(sensor => {
     const body = state[sensor.bodyId];
-    const value = sensor.enabled && body ? sensorPlugin(sensor.type).read({ state: body, previous: previous?.[sensor.bodyId], dt, gravity: document.world.gravity }) : null;
+    let value: number | null = null;
+    if (sensor.enabled && body) try { value = sensorPlugin(sensor.type).read({ state: body, previous: previous?.[sensor.bodyId], dt, gravity: document.world.gravity }); }
+    catch(error) { onError?.(`Senzor ${sensor.name}: ${error instanceof Error ? error.message : String(error)}`); }
     return [sensor.id, value !== null && Number.isFinite(value) ? value : null];
   }));
 }
