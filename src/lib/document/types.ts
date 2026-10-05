@@ -23,12 +23,13 @@ export type JointDefinition = JointBase & (
   { type: 'weld'; referenceAngle: number }
 );
 export interface ForceDefinition extends ModuleDefinition { targetBodyIds: string[] }
-export interface SensorDefinition extends ModuleDefinition { bodyId: string }
-export interface MeasurementDefinition { id: string; sensorId: string; sampleInterval: number }
+export type SensorType = 'x' | 'y' | 'vx' | 'vy' | 'speed' | 'ax' | 'ay' | 'angle' | 'angularVelocity' | 'kinetic' | 'potential' | 'energy';
+export interface SensorDefinition { id: string; name: string; type: SensorType; enabled: boolean; bodyId: string }
+export interface MeasurementDefinition { id: string; sensorId: string; sampleInterval: number; maxSamples?: number }
 export interface PhysicsDocument {
   id: string; name: string; version: number; world: WorldDefinition; bodies: BodyDefinition[];
   joints: JointDefinition[]; forces: ForceDefinition[]; fields: ModuleDefinition[];
   sensors: SensorDefinition[]; measurements: MeasurementDefinition[]; createdAt: string; modifiedAt: string;
 }
-export interface BodyState { position: Vector2; angle: number; velocity: Vector2; angularVelocity: number }
+export interface BodyState { position: Vector2; angle: number; velocity: Vector2; angularVelocity: number; mass?: number; inertia?: number }
 export type SceneState = Record<string, BodyState>;

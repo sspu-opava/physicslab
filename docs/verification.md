@@ -36,3 +36,17 @@ Port 1420 byl na tomto počítači odmítnut chybou EACCES; frontend i Tauri pro
 - Chrome: vytvořen závěs (0, 4) m a koule (1, 2) m, přidán otočný kloub; skutečná simulace kyvadla v čase 3,433 s ukázala polohu (0,716; 1,882) m a rychlost 1,490 m/s. Kotvy a čára vazby sledují simulovaná tělesa.
 - Inspector: propojení tělesa se sebou bylo odmítnuto viditelným upozorněním a výběr B se vrátil na kouli. Vypnutí vazby bylo obnoveno přes Undo; smazání ponechalo obě tělesa, Undo obnovilo aktivní kloub a jeho funkci.
 - Náhled: `artifacts/physicslab-joints.png`. Rust host se neměnil; rozhraní ověřeno v prohlížeči nad stejným frontendem.
+
+## Fáze 5 — senzory, záznam a grafy (5. 10. 2026)
+
+- `npm run check`: 0 chyb, 0 varování.
+- `npm test`: 34 úspěšných testů ve 4 souborech, z toho 9 nových pro měření.
+- `npm run build`: úspěšný produkční build; hlavní bundle 556,56 kB (159,37 kB gzip), nadále doporučení Vite k rozdělení bundle.
+- `git diff --check`: bez chyb whitespace.
+- Shodné vzorky při 30 a 144 FPS, interval 0,02 s bez kumulativního posunu, zrychlení volného pádu −9,81 m/s², změna rychlosti běhu na 2× bez změny intervalu.
+- Pauza nezaznamenává, jednotlivý krok zaznamenává, Reset obnovuje t = 0 a neurčené zrychlení. Vypnutý senzor neposkytuje hodnoty. Dokument simulace zůstává nezměněný.
+- Energie kruhu i obdélníku ověřena se skutečnou hmotností a momentem setrvačnosti, počáteční rotací a šikmým vektorem gravitace.
+- Limit vzorků vypouští nejstarší data, počítá vypuštěné vzorky a ruční vymazání zachovává aktuální simulační čas.
+- Definice mají Undo/Redo, odstranění tělesa čistí reference, neplatné intervaly / limity / reference jsou odmítnuty.
+- Export CSV ověřuje escapování názvu, jednotky a počet řádků; JSON zachovává data i chybějící počáteční vzorek zrychlení. Graf pracuje s prázdnými a konstantními daty a při redukci zachová krátkou špičku.
+- Vizuální a interakční kontrola panelu a stažení exportu v prohlížeči nebyly provedeny: nástroj v této relaci vrací prázdný seznam prohlížečů, Chrome ani vestavěný prohlížeč nejsou dostupné. Rust host se neměnil; nativní export nebyl ověřen. Lokální Vite server byl spuštěn na `http://127.0.0.1:5173/` pro ruční kontrolu.

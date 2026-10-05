@@ -51,7 +51,7 @@ export class PlanckPhysicsAdapter implements PhysicsEngineAdapter {
   step(dt: number): void { this.world.step(dt, 8, 3); }
   getBodyState(id: string): BodyState {
     const b = this.body(id), p = b.getPosition(), v = b.getLinearVelocity();
-    return { position: { x: p.x, y: p.y }, angle: b.getAngle(), velocity: { x: v.x, y: v.y }, angularVelocity: b.getAngularVelocity() };
+    return { position: { x: p.x, y: p.y }, angle: b.getAngle(), velocity: { x: v.x, y: v.y }, angularVelocity: b.getAngularVelocity(), mass: b.getMass(), inertia: b.getInertia() };
   }
   reset(): void { this.world = new World(); this.bodies.clear(); this.definitions.clear(); this.joints.clear(); }
 }

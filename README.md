@@ -1,6 +1,6 @@
 ﻿# PhysicsLab
 
-Desktopová fyzikální laboratoř v Tauri 2, Svelte 5, TypeScriptu, PixiJS 8 a Planck.js. První etapa podle `copilot-instructions.md`, s tmavým rozhraním podle `gui/navrh-gui.png`.
+Desktopová fyzikální laboratoř v Tauri 2, Svelte 5, TypeScriptu, PixiJS 8 a Planck.js. Vývoj podle `copilot-instructions.md`, s tmavým rozhraním podle `gui/navrh-gui.png`.
 
 ## Spuštění
 
@@ -31,7 +31,8 @@ npm run tauri build -- --no-bundle
 - Duplikace, mazání a Undo/Redo; celé tažení i úprava jednoho pole Inspectoru tvoří jeden příkaz.
 - Čtyři fyzikální vazby: otočný kloub, pevná vzdálenost, posuvný kloub a pevné spojení; tvorba, výběr, vlastnosti a Undo/Redo.
 - Inspector pro počáteční polohu, rotaci, hmotnost, tření, restituci, tlumení, rychlost a barvu.
-- Odečet skutečné aktuální polohy a rychlosti; žádná ukázková data grafů.
+- Senzory polohy, rychlosti, zrychlení, úhlu, úhlové rychlosti a energií; záznam v simulačním čase.
+- Více křivek v grafu se společnými jednotkami, tabulka hodnot a export CSV/JSON.
 - Serializovatelný model, nezávislý adaptér, fixed timestep, unit testy.
 
 Úpravy scény jsou dostupné ve stavu STOPPED. Stop i Reset vrací autorskou scénu do výchozího stavu. Pause zachovává průběh. Běh simulace nikdy nepřepisuje počáteční hodnoty dokumentu.
@@ -50,9 +51,19 @@ Kliknutím na vazbu ve stromu nebo její čáru zobrazíte Inspector. Upravíte 
 
 Pro jednoduché kyvadlo umístěte statický závěs například do (0, 4) m a kouli do (1, 2) m, vytvořte otočný kloub se závěsem jako A a spusťte simulaci. Závěs může být malý statický obdélník. Čára vazby je vizualizace, nikoli další kolidující tyč.
 
+## Měření a grafy
+
+Ve spodním panelu otevřete **Senzory a záznam**, vyberte těleso, veličinu a interval a přidejte měření. Pro volný pád zkuste polohu y, rychlost vy a zrychlení ay. V **Grafech** přepínejte jednotky a viditelnost křivek; více těles nebo veličin se stejnou jednotkou lze porovnat současně. Záložka **Hodnoty** ukazuje vybrané těleso i všechny vytvořené senzory.
+
+Definice senzorů a měření lze upravovat ve stavu STOPPED, včetně názvu, zapnutí, intervalu a limitu vzorků (výchozí 5000 na křivku). Změny a mazání podporují Undo/Redo. Při smazání tělesa se odstraní související senzory a měření. Pro jiné těleso nebo veličinu vytvořte nové měření.
+
+Záznam se vzorkuje po fyzikálních krocích. Interval je v simulačních sekundách; pokud není násobkem 1/120 s, vzorek se pořídí v prvním kroku po požadovaném čase a uloží skutečný čas. Pauza záznam zachová, Krok může přidat vzorek. **CSV / JSON exportujte při pauze před Stop / Reset**: reset a úprava scény vymažou průběh a začnou na t = 0. Vymazat záznam za běhu nebo pauzy začne nový záznam v aktuálním čase. Překročení limitu postupně vypouští nejstarší vzorky, počet je viditelný v panelu.
+
+Zrychlení je konečná diference rychlostí za jeden fyzikální krok, včetně nárazů; na t = 0 není určeno. Kinetická energie zahrnuje posuv i rotaci podle skutečné hmotnosti a momentu setrvačnosti enginu. Potenciální energie je `−m g·r` pro homogenní gravitaci, s nulou v počátku; mechanická energie nezahrnuje budoucí pružiny či jiná pole. Statická a kinematická tělesa mají v enginu nulovou hmotnost, tedy nulovou energii. Vzorky běhu jsou dočasné a nejsou součástí autorského dokumentu.
+
 ## Další etapy
 
-Další fáze: senzory a záznam měření s grafy, následně síly, ukládání projektů, experimenty a registry pluginů. Trvalé skupiny, polygonová tělesa, geometrické úchyty na plátně a motory vazeb zatím nejsou implementované. Konfigurace nyní vytváří desktopový executable s vlastní ikonou, bez instalátoru; distribuce přijde později.
+Další fáze: síly a pole, ukládání projektů, experimenty a obecné registry pluginů. Silové a kontaktní senzory potřebují samostatnou vrstvu událostí a sil; zatím nejsou dostupné. Trvalé skupiny, polygonová tělesa, geometrické úchyty na plátně, lanová vazba a motory vazeb zatím nejsou implementované. Konfigurace nyní vytváří desktopový executable s vlastní ikonou, bez instalátoru; distribuce přijde později.
 
 Viz [architektura](docs/architecture.md).
 

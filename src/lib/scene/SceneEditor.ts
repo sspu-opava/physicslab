@@ -1,4 +1,6 @@
-import type { BodyDefinition, JointDefinition, PhysicsDocument } from '../document/types';
+import type { BodyDefinition, JointDefinition, PhysicsDocument, SensorDefinition, MeasurementDefinition } from '../document/types';
+import { validateSensor } from '../measurements/SensorRegistry';
+import { validateMeasurement } from '../measurements/MeasurementRecorder';
 import { validateJoint } from '../physics/joints/joints';
 import { CommandHistory, DocumentCommand } from '../history/CommandHistory';
 
@@ -32,6 +34,26 @@ export class SceneEditor {
   addJoint(joint: JointDefinition): void {
     validateJoint(joint, this.document.bodies);
     this.commit('Přidat vazbu', { ...this.document, joints: [...this.document.joints, joint] }); this.selection = [joint.id];
+  }
+  addMeasurement(sensor: SensorDefinition, measurement: MeasurementDefinition): void {
+    validateSensor(sensor, this.document);
+    if (this.document.sensors.some(s => s.id === sensor.id) || this.document.measurements.some(m => m.id === measurement.id)) throw new Error('ID senzoru nebo měření už existuje.');
+    if (measurement.sensorId !== sensor.id) throw new Error('Měření musí odkazovat na přidávaný senzor.');
+    const next = { ...this.document, sensors: [...this.document.sensors, sensor], measurements: [...this.document.measurements, measurement] };
+    validateMeasurement(measurement, next); this.commit('Přidat měření', next);
+  }
+  updateMeasurement(sensor: SensorDefinition, measurement: MeasurementDefinition): void {
+    validateSensor(sensor, this.document);
+    if (!this.document.sensors.some(s => s.id === sensor.id) || !this.document.measurements.some(m => m.id === measurement.id && m.sensorId === sensor.id) || measurement.sensorId !== sensor.id) throw new Error('Měření nebo senzor neexistuje.');
+    const next = { ...this.document, sensors: this.document.sensors.map(s => s.id === sensor.id ? sensor : s), measurements: this.document.measurements.map(m => m.id === measurement.id ? measurement : m) };
+    validateMeasurement(measurement, next);
+    if (JSON.stringify(next) !== JSON.stringify(this.document)) this.commit('Změnit měření', next);
+  }
+  removeMeasurement(id: string): void {
+    const measurements = this.document.measurements.filter(m => m.id !== id), sensorId = this.document.measurements.find(m => m.id === id)?.sensorId;
+    if (!sensorId) return;
+    const sensors = this.document.sensors.filter(s => s.id !== sensorId || measurements.some(m => m.sensorId === s.id));
+    this.commit('Smazat měření', { ...this.document, measurements, sensors });
   }
   updateJoint(joint: JointDefinition): void {
     validateJoint(joint, this.document.bodies);

@@ -18,7 +18,7 @@ Svelte komponenty → PhysicsDocument → SimulationCore → PhysicsEngineAdapte
 
 `units/coordinates.ts` je jediný převod svět / obrazovka. Svět: +x doprava, +y nahoru; délka m, hmotnost kg, čas s, úhel rad, rychlost m/s. Obrazovka: +y dolů. Inspector zobrazuje rotaci ve stupních. `pixelsPerMeter` a zoom ovlivňují výhradně zobrazení.
 
-UI je rozdělené na Toolbar, Library, SimulationCanvas, SceneTree, Inspector a Measurements. App spojuje dokument se simulačním jádrem bez přímého přístupu k interním objektům enginu. Zobrazené aktuální hodnoty nejsou dosud senzory ani zaznamenané časové řady.
+UI je rozdělené na Toolbar, Library, SimulationCanvas, SceneTree, Inspector a Measurements. App spojuje dokument se simulačním jádrem bez přímého přístupu k interním objektům enginu. Measurements čte aktuální odečty i časové řady ze samostatné vrstvy měření.
 
 Rust je pouze minimální Tauri host bez filesystem oprávnění nebo příkazů. Ukládání projektů se bude přidávat v samostatné etapě.
 
@@ -45,6 +45,16 @@ Canvas pouze převádí pointer souřadnice, řídí capture a deleguje nástroj
 `JointCreator` v knihovně vybírá typ a dvě tělesa; tlačítko typu převezme dvojici vybraných těles. `JointInspector` upravuje kotvy, referenční úhel, délku, osu a meze. Výběr ID je společný pro tělesa i vazby. Vazby lze vybrat ve stromu i kliknutím na jejich čáru; transformace plátna se týkají těles. Mazání vazby ponechá tělesa; mazání tělesa odstraní související vazby. Historie obnovuje celé autorské modely, včetně vazeb. Duplikace zůstává dostupná pro tělesa, vazby se automaticky nekopírují.
 
 Renderer získává polohy kotev ze snapshotů těles, vykresluje spojovací čáry, kotvy a osu posuvného kloubu. Vizualizace nevstupuje do řešiče. Validace editoru odmítá neplatnou vazbu před uložením do historie; upozornění je viditelné v UI a pole se při odmítnutí vrací k hodnotám modelu.
+
+## Senzory a měření (fáze 5)
+
+`SensorRegistry` deklaruje skalární veličiny, názvy, jednotky a funkce odečtu. Senzor odkazuje na těleso pomocí ID. Čte snapshot a pro zrychlení předchozí snapshot a dt; energie používá hmotnost a moment setrvačnosti poskytnuté adaptérem. UI ani senzory nečtou interní Planck objekty. Energie odpovídá posuvu a rotaci plus homogenní gravitaci `−m g·r` s referencí v počátku. Síly a kontakty se přidají až s příslušnými vrstvami enginu.
+
+`MeasurementDefinition` odkazuje na ID senzoru a nastavuje interval a limit vzorků. `MeasurementRecorder` udržuje runtime `TimeSeries` s časy, hodnotami, jednotkou a názvem; tyto řady nevstupují do dokumentu ani historie. `SimulationCore` čte senzory a vzorkuje po každém fyzikálním kroku (také Single Step), nikoli po vykreslení. Po resetu zaznamená dostupné hodnoty na t = 0; neurčené nebo vypnuté odečty přeskočí. Plán vzorkování vychází z původního času a pořadí intervalu, aby se nezaokrouhloval opakovaným přičítáním.
+
+Nenásobné intervaly používají první fyzikální krok po plánovaném čase, se skutečným časem kroku a bez interpolace. Pauza nic nevzorkuje. Změna rychlosti ovlivňuje simulační čas, interval zůstává v sekundách světa. Reset / Stop a úpravy autorského dokumentu záznam restartují. Ruční vymazání založí plán v aktuálním čase. Limit 2 až 20 000 vzorků na řadu (výchozí 5000) vypouští nejstarší hodnoty a počítá vypuštěné vzorky.
+
+`Measurements` a `MeasurementSetup` zobrazují aktuální hodnoty, konfiguraci a SVG graf. Křivky se seskupují podle jednotek a lze je skrývat. `graph.ts` redukuje zobrazené body po blocích se zachováním extrémů; export vždy používá všechny dosud uchované vzorky. CSV je dlouhá tabulka ID měření, ID senzoru, názvu, jednotky, času a hodnoty; JSON zachovává samostatné řady a počet vypuštěných vzorků. Export přes Blob nemění model a nepotřebuje nový Rust příkaz. Desktopový dialog a trvalé ukládání přijdou v další fázi.
 
 ## Ověření
 

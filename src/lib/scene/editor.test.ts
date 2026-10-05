@@ -28,7 +28,7 @@ describe('Autorská historie', () => {
   it('mazání vyčistí reference a undo obnoví model včetně referencí', () => {
     const document = createDocument();
     document.joints = [createJoint('distance', document.bodies[0], document.bodies[1], 'joint')];
-    document.sensors = [{ id: 'sensor', type: 'position', enabled: true, parameters: {}, bodyId: 'ball' }];
+    document.sensors = [{ id: 'sensor', name: 'Poloha', type: 'y', enabled: true, bodyId: 'ball' }];
     document.measurements = [{ id: 'measurement', sensorId: 'sensor', sampleInterval: 0.1 }];
     const editor = new SceneEditor(document); editor.select('ball'); editor.deleteSelected();
     expect(editor.document.bodies).toHaveLength(1); expect(editor.document.joints).toHaveLength(0); expect(editor.document.measurements).toHaveLength(0);
